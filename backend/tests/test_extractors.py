@@ -304,3 +304,4 @@ def test_html_extraction(tmp_path: Path) -> None:
     # Verify script and style elements were stripped
     assert "alert(" not in all_content
     assert "background: #000" not in all_content
+

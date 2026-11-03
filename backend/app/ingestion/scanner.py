@@ -137,3 +137,4 @@ class FolderScanner:
         """Record directory traversal errors without aborting the scan."""
         logger.warning("Directory traversal permission/access error: %s", error)
         report.scan_errors.append(f"Access error: {error}")
+

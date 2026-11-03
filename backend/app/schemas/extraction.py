@@ -111,3 +111,4 @@ class ExtractionBatchSummary(BaseModel):
     unsupported: int = Field(default=0, description="Count of unsupported files skipped")
     documents: List[ExtractedDocument] = Field(default_factory=list, description="List of extraction results")
     duration_seconds: float = Field(default=0.0, description="Total execution time in seconds")
+

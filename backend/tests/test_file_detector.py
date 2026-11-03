@@ -58,3 +58,4 @@ def test_validates_empty_supported_file(tmp_path: Path) -> None:
     assert is_valid
     assert category == "text"
     assert error is None
+

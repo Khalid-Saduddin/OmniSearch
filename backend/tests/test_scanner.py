@@ -69,3 +69,4 @@ def test_scanner_handles_nonexistent_directory(tmp_path: Path) -> None:
     assert report.total_discovered == 0
     assert len(report.scan_errors) == 1
     assert "does not exist" in report.scan_errors[0]
+

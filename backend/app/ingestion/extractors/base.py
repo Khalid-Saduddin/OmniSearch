@@ -91,3 +91,4 @@ class BaseExtractor(ABC):
             metadata=metadata or {},
             error_message=error_message,
         )
+

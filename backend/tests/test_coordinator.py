@@ -70,3 +70,4 @@ def test_coordinator_batch_failure_isolation(tmp_path: Path) -> None:
     assert doc_map["trojan.docx"].extraction_status == ExtractionStatus.FAILED
     assert doc_map["archive.zip"].extraction_status == ExtractionStatus.UNSUPPORTED
     assert doc_map["does_not_exist.txt"].extraction_status == ExtractionStatus.FAILED
+

@@ -164,3 +164,4 @@ class HtmlExtractor(BaseExtractor):
                 metadata=doc_metadata,
                 partial_segments=segments if segments else None,
             )
+

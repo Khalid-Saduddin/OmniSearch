@@ -132,3 +132,4 @@ class PdfExtractor(BaseExtractor):
                     doc.close()
                 except Exception:
                     pass
+

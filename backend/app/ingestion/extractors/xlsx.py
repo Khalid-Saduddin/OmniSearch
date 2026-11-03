@@ -133,3 +133,4 @@ class XlsxExtractor(BaseExtractor):
                     wb.close()
                 except Exception:
                     pass
+

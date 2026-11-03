@@ -64,3 +64,4 @@ def create_default_registry() -> ExtractorRegistry:
 
 # Global default instance
 default_registry = create_default_registry()
+

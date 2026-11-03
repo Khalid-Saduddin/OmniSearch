@@ -57,3 +57,4 @@ def try_calculate_sha256(file_path: Path, chunk_size: int = DEFAULT_CHUNK_SIZE) 
         return calculate_sha256(file_path, chunk_size=chunk_size)
     except HashingError:
         return None
+

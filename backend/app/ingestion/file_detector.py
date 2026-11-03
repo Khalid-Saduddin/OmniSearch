@@ -151,3 +151,4 @@ class FileTypeDetector:
             return False, "binary_mismatch", f"File extension '{ext}' expects text, but null bytes were detected"
 
         return True, category, None
+

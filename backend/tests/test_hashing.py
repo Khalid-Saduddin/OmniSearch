@@ -48,3 +48,4 @@ def test_calculate_sha256_nonexistent_file(tmp_path: Path) -> None:
 def test_try_calculate_sha256_returns_none_on_failure(tmp_path: Path) -> None:
     missing_file = tmp_path / "missing.bin"
     assert try_calculate_sha256(missing_file) is None
+
