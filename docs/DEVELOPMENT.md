@@ -72,6 +72,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 Once running, verify backend operation:
 - **Health Check Endpoint:** `http://127.0.0.1:8000/api/v1/health`
+- **Keyword Search Endpoint (POST / GET):** `http://127.0.0.1:8000/api/v1/search`
 - **Interactive Swagger Documentation:** `http://127.0.0.1:8000/docs`
 - **Interactive OpenAPI ReDoc:** `http://127.0.0.1:8000/redoc`
 

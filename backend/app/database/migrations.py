@@ -92,9 +92,85 @@ def migration_v1(conn: sqlite3.Connection) -> None:
     cursor.close()
 
 
+def migration_v2(conn: sqlite3.Connection) -> None:
+    """Phase 4 migration: SQLite FTS5 full-text search virtual table and automatic synchronization triggers."""
+    cursor = conn.cursor()
+
+    # 1. Dedicated FTS5 virtual table indexing chunk content, filename, and document title.
+    # Indexed columns: content (col 0), filename (col 1), doc_title (col 2).
+    # Unindexed columns: chunk_id (col 3), file_id (col 4).
+    cursor.execute("""
+    CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+        content,
+        filename,
+        doc_title,
+        chunk_id UNINDEXED,
+        file_id UNINDEXED,
+        tokenize = 'unicode61'
+    );
+    """)
+
+    # 2. Trigger on chunks INSERT: automatically index new chunk with file metadata
+    cursor.execute("""
+    CREATE TRIGGER IF NOT EXISTS trg_chunks_ai AFTER INSERT ON chunks
+    BEGIN
+        INSERT INTO chunks_fts(content, filename, doc_title, chunk_id, file_id)
+        SELECT new.content,
+               f.filename,
+               COALESCE(json_extract(f.metadata_json, '$.title'), f.filename),
+               new.id,
+               new.file_id
+        FROM files f WHERE f.id = new.file_id;
+    END;
+    """)
+
+    # 3. Trigger on chunks DELETE: automatically remove deleted chunk from FTS
+    cursor.execute("""
+    CREATE TRIGGER IF NOT EXISTS trg_chunks_ad AFTER DELETE ON chunks
+    BEGIN
+        DELETE FROM chunks_fts WHERE chunk_id = old.id;
+    END;
+    """)
+
+    # 4. Trigger on files DELETE: remove all associated chunk FTS records (covers CASCADE and direct deletes)
+    cursor.execute("""
+    CREATE TRIGGER IF NOT EXISTS trg_files_ad AFTER DELETE ON files
+    BEGIN
+        DELETE FROM chunks_fts WHERE file_id = old.id;
+    END;
+    """)
+
+    # 5. Trigger on files UPDATE: update filename and doc_title in FTS when file metadata changes
+    cursor.execute("""
+    CREATE TRIGGER IF NOT EXISTS trg_files_au AFTER UPDATE OF filename, metadata_json ON files
+    BEGIN
+        UPDATE chunks_fts
+        SET filename = new.filename,
+            doc_title = COALESCE(json_extract(new.metadata_json, '$.title'), new.filename)
+        WHERE file_id = old.id;
+    END;
+    """)
+
+    # 6. Backfill existing chunks if any exist (e.g. from Phase 3 before Phase 4 migration)
+    cursor.execute("""
+    INSERT INTO chunks_fts (content, filename, doc_title, chunk_id, file_id)
+    SELECT c.content,
+           f.filename,
+           COALESCE(json_extract(f.metadata_json, '$.title'), f.filename),
+           c.id,
+           c.file_id
+    FROM chunks c
+    JOIN files f ON c.file_id = f.id
+    WHERE c.id NOT IN (SELECT chunk_id FROM chunks_fts);
+    """)
+
+    cursor.close()
+
+
 # Ordered migration registry: (version, migration_function)
 MIGRATIONS: List[Tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, migration_v1),
+    (2, migration_v2),
 ]
 
 
@@ -135,6 +211,7 @@ def apply_migrations(conn: sqlite3.Connection) -> int:
 
     cursor.close()
     if applied_count > 0:
+        conn.commit()
         logger.info("Successfully applied %d migration(s). Current schema version: v%d", applied_count, highest_version)
     return highest_version
 

@@ -200,7 +200,58 @@ flowchart TD
 
 ---
 
-## 6. Architectural Decisions & Principles
+## 6. Keyword Search Engine (Phase 4 Implemented)
+
+The keyword search subsystem is implemented inside `backend/app/search/` as a modular, offline-capable search engine built upon SQLite FTS5:
+
+```mermaid
+flowchart TD
+    RawQuery["Raw User Query\n(e.g., '\"neural networks\" python NOT java')"] --> QueryParser["QueryParser (app/search/query_parser.py)\n• Exact phrase preservation\n• Technical identifier preservation\n• Unclosed quote auto-balancing\n• Operator sanitization & syntax safety"]
+    
+    QueryParser --> FTSQuery["Safe FTS5 MATCH Expression"]
+    
+    subgraph EngineExecution["KeywordSearchEngine (app/search/keyword_search.py)"]
+        FTSQuery --> FTSTable[("chunks_fts (SQLite FTS5)\ncontent (w=5.0), filename (w=2.0), doc_title (w=1.0)")]
+        FTSTable --> BM25Rank["BM25 Scoring (SQLite bm25() function)\nAscending rank order"]
+        BM25Rank --> Snippets["Snippet Generation (snippet() with markers)"]
+        Snippets --> Windowing["Window Function Deduplication\n(ROW_NUMBER() OVER PARTITION BY file_id)\nLimits max_chunks_per_file"]
+        Windowing --> Filtering["Metadata Filters\n(file_type, folder_id, folder_path)"]
+        Filtering --> JoinCanonical["Join canonical chunks & files\n(Preserves structural location pointers)"]
+    end
+    
+    JoinCanonical --> SnippetFormatter["SnippetFormatter (app/search/snippets.py)\n• XSS Protection (html.escape)\n• Standardized <mark> tags\n• Highlights extraction & fallback"]
+    
+    SnippetFormatter --> SearchResponse["SearchResponse\n• SearchResultItems with score, bm25_rank, is_stale\n• Location: page, slide, sheet, lines\n• Execution time ms"]
+```
+
+### 6.1 Keyword Search Components
+1. **`QueryParser` (`app/search/query_parser.py`):**
+   - Parses complex user queries into safe SQLite FTS5 MATCH expressions.
+   - Extracts exact quoted phrases (`"phrase"`) without breaking whitespace.
+   - Preserves technical identifiers (`test_case_1`, `k-means`, `v1.2.3`, `C:\Windows\System32`).
+   - Handles prefix searches (`comput*` -> `"comput"*`).
+   - Preserves valid boolean operators (`AND`, `OR`, `NOT`) while stripping stray operators at query edges.
+   - Neutralizes unsafe characters (`:`, `^`, `*`, `(`, `)`) to guarantee zero SQLite syntax crashes.
+   - Empty or whitespace queries are safely identified without executing invalid SQL.
+2. **`SnippetFormatter` (`app/search/snippets.py`):**
+   - Translates FTS delimiter markers into standardized `<mark>` tags for client rendering.
+   - Protects against XSS attacks by running `html.escape()` on document text before markup injection.
+   - Extracts deduplicated lists of highlighted matching terms.
+   - Generates contextual fallback snippets from chunk content when FTS snippets are empty.
+3. **`KeywordSearchEngine` (`app/search/keyword_search.py`):**
+   - Combines FTS5 BM25 scoring with weights prioritizing chunk content (5.0), filename matches (2.0), and document title (1.0).
+   - Prevents single-document result dominance using window functions (`ROW_NUMBER() OVER (PARTITION BY file_id)`) to enforce `max_chunks_per_file` (default: 3).
+   - Supports filtering by file extensions/types, folder IDs, and root paths.
+   - Supports pagination with `limit` and `offset`.
+   - Incorporates the failed re-indexing policy: retained chunks from files that encountered subsequent re-indexing failures are clearly flagged with `is_stale = True`.
+4. **`FTS Virtual Table & Synchronization` (`app/database/migrations.py` & `app/database/repositories/fts.py`):**
+   - Dedicated `chunks_fts` virtual table using `fts5` and `unicode61` tokenizer.
+   - Automatic SQLite triggers (`trg_chunks_ai`, `trg_chunks_ad`, `trg_files_ad`, `trg_files_au`) maintain total synchronization across chunk insertion, chunk replacement, file cascade deletion, and file updates.
+   - `FtsRepository` provides manual rebuild (`rebuild_index`) and segment consolidation (`optimize`).
+
+---
+
+## 7. Architectural Decisions & Principles
 
 1. **Local-First & Privacy-Preserving:** All raw document files, indices, and vector embeddings remain on the user's local disk. No external uploads or cloud-dependent APIs are required for keyword and local semantic discovery.
 2. **Decoupled API Architecture:** The FastAPI backend and Next.js frontend are strictly decoupled. This allows independent testing, headless operation, and straightforward embedding into Electron in later phases.

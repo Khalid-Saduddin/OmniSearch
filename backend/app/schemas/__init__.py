@@ -18,6 +18,12 @@ from app.schemas.processing import (
     IndexJobRecord,
     IndexJobStatus,
 )
+from app.schemas.search import (
+    SearchFilter,
+    SearchQuery,
+    SearchResultItem,
+    SearchResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -34,4 +40,8 @@ __all__ = [
     "ChunkRecord",
     "IndexJobRecord",
     "IndexJobStatus",
+    "SearchFilter",
+    "SearchQuery",
+    "SearchResultItem",
+    "SearchResponse",
 ]

@@ -30,7 +30,6 @@ OmniSearch is a professional, local-first, AI-powered multifile search and perso
 
 ### Architecture Roadmap (Future Phases)
 - **Desktop Shell:** Electron
-- **Lexical Search & BM25 Ranking:** SQLite with FTS5 extension (Phase 4)
 - **Dense Vector Search:** ChromaDB (Phase 5)
 - **Embedding Model:** Google EmbeddingGemma 2 (Phase 5)
 
@@ -47,24 +46,26 @@ OmniSearch/
 │   │   │   └── v1/
 │   │   │       ├── endpoints/
 │   │   │       │   ├── __init__.py
-│   │   │       │   └── health.py          # Health check route handler
+│   │   │       │   ├── health.py          # Health check route handler
+│   │   │       │   └── search.py          # Keyword search API endpoints (Phase 4)
 │   │   │       ├── __init__.py
 │   │   │       └── router.py              # V1 API router aggregator
 │   │   ├── core/
 │   │   │   ├── __init__.py
 │   │   │   ├── config.py                  # Pydantic Settings & storage directory configs
 │   │   │   └── logging.py                 # Centralized logging setup
-│   │   ├── database/                      # Canonical persistence layer (Phase 3)
+│   │   ├── database/                      # Canonical persistence layer (Phase 3 & 4)
 │   │   │   ├── repositories/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── chunks.py              # Chunks repository
 │   │   │   │   ├── files.py               # Files repository & reconciliation
 │   │   │   │   ├── folders.py             # Folders repository
+│   │   │   │   ├── fts.py                 # FTS5 index maintenance repository (Phase 4)
 │   │   │   │   ├── jobs.py                # Index jobs repository
 │   │   │   │   └── settings.py            # Key-value settings repository
 │   │   │   ├── connection.py              # Connection lifecycle & WAL transactions
 │   │   │   ├── initialization.py          # DB initialization & interrupted job recovery
-│   │   │   ├── migrations.py              # Versioned schema migrations
+│   │   │   ├── migrations.py              # Versioned schema migrations (v1 canonical, v2 FTS5)
 │   │   │   └── __init__.py
 │   │   ├── ingestion/                     # Multi-format ingestion engine (Phase 2)
 │   │   │   ├── extractors/
@@ -94,7 +95,13 @@ OmniSearch/
 │   │   │   ├── __init__.py
 │   │   │   ├── extraction.py              # ExtractedDocument & ExtractedSegment schemas
 │   │   │   ├── health.py                  # HealthResponse schema
-│   │   │   └── processing.py              # DocumentChunk & DB entity schemas
+│   │   │   ├── processing.py              # DocumentChunk & DB entity schemas
+│   │   │   └── search.py                  # Keyword search query, result & response schemas (Phase 4)
+│   │   ├── search/                        # Keyword search subsystem (Phase 4)
+│   │   │   ├── __init__.py
+│   │   │   ├── keyword_search.py          # SQLite FTS5 + BM25 ranked search engine
+│   │   │   ├── query_parser.py            # Safe query parser & syntax sanitizer
+│   │   │   └── snippets.py                # HTML snippet formatting & XSS-safe highlighter
 │   │   ├── services/                      # Application business logic
 │   │   │   ├── __init__.py
 │   │   │   └── indexer.py                 # Persistent IndexingService
