@@ -106,6 +106,10 @@ This tests:
 - **Folder Scanner:** Recursive folder traversal, directory exclusion (`.git`, `node_modules`, `.venv`), missing directory handling.
 - **Multi-Format Extractors:** Genuine document parsing for PDF, DOCX, PPTX, XLSX, TXT, Markdown, Source Code, CSV, and HTML.
 - **Ingestion Coordinator:** Batch processing, fault isolation, and uninterrupted batch execution upon individual file corruption.
+- **Text Normalization:** Unicode NFKC normalization, control character removal, line endings, code indentation preservation.
+- **Intelligent Chunking:** Target size ~500 tokens, ~80 token overlap, sentence and code line boundary preservation, location metadata retention.
+- **Database Architecture:** Table and index creation, foreign key CASCADE deletions, transaction rollback, persistence across re-open, migrations.
+- **Persistent Indexing Service:** New file indexing, duplicate skipping, modified file chunk replacement, deleted file reconciliation, and interrupted job recovery.
 
 ### 4.2 Frontend Checks
 

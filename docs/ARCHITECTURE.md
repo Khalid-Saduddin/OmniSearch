@@ -150,7 +150,57 @@ flowchart TD
 
 ---
 
-## 5. Architectural Decisions & Principles
+## 5. Content Processing & Persistent Indexing (Phase 3 Implemented)
+
+The content processing and persistence layer transforms extracted documents into normalized, semantic chunks stored persistently in SQLite:
+
+```mermaid
+flowchart TD
+    ExtractedDoc["ExtractedDocument (Phase 2)"] --> Normalizer["TextNormalizer\n(Unicode NFKC, control char stripping, format-aware indentation)"]
+    Normalizer --> Chunker["DocumentChunker\n(Target: 500 tokens, Overlap: 80 tokens,\nsentence/line boundaries preserved)"]
+    Chunker --> Chunks["DocumentChunk List\n(With location pointers & token estimates)"]
+    
+    subgraph PersistencePipeline["Atomic SQLite Persistence (app/services/indexer.py)"]
+        IndexService["IndexingService"] --> ChangeDetection{"Change Detection\n(Size, mtime, SHA-256)"}
+        ChangeDetection -- "Unchanged" --> Skip["Skip File Processing"]
+        ChangeDetection -- "New or Modified" --> AtomicTx["Atomic DB Transaction"]
+        AtomicTx --> UpsertFile["FileRepository.upsert\n(Status, SHA-256, metadata_json)"]
+        AtomicTx --> ReplaceChunks["ChunkRepository.delete_by_file_id\n+ insert_chunks"]
+        IndexService --> Reconcile["Deleted File Reconciliation\n(FileRepository.delete_missing_in_folder)"]
+    end
+
+    Chunks --> PersistencePipeline
+    PersistencePipeline --> SQLiteStore[("Canonical SQLite Database\n(WAL mode, foreign key cascades)")]
+```
+
+### 5.1 Content Processing Components
+1. **`TextNormalizer` (`app/processing/normalizer.py`):**
+   - Applies Unicode NFKC decomposition to normalize ligatures and compatibility characters.
+   - Normalizes carriage returns (`\r\n` and `\r` to `\n`) and strips non-printable control characters.
+   - Code-aware: strictly preserves leading indentation (spaces and tabs) for source code files.
+   - Table-aware: preserves column separators and row boundaries without flattening data.
+2. **`DocumentChunker` (`app/processing/chunker.py`):**
+   - Divides documents into chunks targeting 450–600 tokens (default: 500) with ~80 token overlap.
+   - Preserves sentence boundaries in prose and line boundaries in code without breaking statements.
+   - Preserves source-location metadata (`page_number`, `slide_number`, `sheet_name`, `row_number`, `start_line`, `end_line`).
+   - Short documents fitting within target token size remain single intact chunks.
+3. **`Token Counter` (`app/processing/token_counter.py`):**
+   - Pluggable `BaseTokenCounter` interface.
+   - `ApproximateTokenCounter` provides deterministic subword token approximations for BPE-like models prior to EmbeddingGemma integration in Phase 5.
+4. **`SQLite Database Architecture` (`app/database/`):**
+   - Uses Python's standard-library `sqlite3` with `check_same_thread=False` and connection pooling.
+   - Enforces WAL journal mode (`PRAGMA journal_mode = WAL;`) and synchronous normal for high desktop throughput.
+   - Enforces relational foreign keys (`PRAGMA foreign_keys = ON;`) with cascade deletions.
+   - Versioned migrations tracked in `schema_migrations`.
+   - Startup recovery policy (`recover_interrupted_jobs`) cleans up any jobs left running after an abnormal process exit.
+5. **`IndexingService` (`app/services/indexer.py`):**
+   - Orchestrates folder scanning, file change detection, ingestion, chunking, and database storage.
+   - Atomic chunk replacement: old chunks are safely purged and replaced inside an atomic transaction.
+   - Reconciliation: deletes records for files removed from disk.
+
+---
+
+## 6. Architectural Decisions & Principles
 
 1. **Local-First & Privacy-Preserving:** All raw document files, indices, and vector embeddings remain on the user's local disk. No external uploads or cloud-dependent APIs are required for keyword and local semantic discovery.
 2. **Decoupled API Architecture:** The FastAPI backend and Next.js frontend are strictly decoupled. This allows independent testing, headless operation, and straightforward embedding into Electron in later phases.

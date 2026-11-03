@@ -9,6 +9,7 @@ import uvicorn
 from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
 from app.core.logging import get_logger, setup_logging
+from app.database.initialization import init_db
 
 logger = get_logger(__name__)
 
@@ -19,6 +20,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     setup_logging(settings.log_level)
     logger.info("Starting %s v%s in %s mode", settings.app_name, settings.app_version, settings.environment)
+    init_db(settings.resolved_db_path)
     yield
     logger.info("Shutting down %s", settings.app_name)
 

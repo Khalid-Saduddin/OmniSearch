@@ -10,6 +10,14 @@ from app.schemas.extraction import (
     ScannedFile,
     SegmentType,
 )
+from app.schemas.processing import (
+    ChunkRecord,
+    DocumentChunk,
+    FileRecord,
+    FolderRecord,
+    IndexJobRecord,
+    IndexJobStatus,
+)
 
 __all__ = [
     "HealthResponse",
@@ -20,4 +28,10 @@ __all__ = [
     "ScanReport",
     "ScannedFile",
     "SegmentType",
+    "DocumentChunk",
+    "FolderRecord",
+    "FileRecord",
+    "ChunkRecord",
+    "IndexJobRecord",
+    "IndexJobStatus",
 ]

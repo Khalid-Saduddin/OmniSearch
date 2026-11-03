@@ -13,6 +13,7 @@ OmniSearch is a professional, local-first, AI-powered multifile search and perso
 - **Python 3.11+** (Tested on Python 3.15.1 Windows AMD64)
 - **FastAPI** — High-performance ASGI web framework
 - **Pydantic & Pydantic Settings** — Strongly-typed validation and centralized environment configuration
+- **SQLite (sqlite3)** — Canonical persistent database (WAL mode, foreign key cascades, migrations)
 - **Uvicorn** — Production ASGI server
 - **PyMuPDF (1.28.2)** — High-performance PDF document and page text extraction
 - **python-docx (1.2.0)** — Word (.docx) paragraph and table extraction
@@ -29,9 +30,9 @@ OmniSearch is a professional, local-first, AI-powered multifile search and perso
 
 ### Architecture Roadmap (Future Phases)
 - **Desktop Shell:** Electron
-- **Lexical Search & Storage:** SQLite with FTS5 extension (BM25 ranking)
-- **Dense Vector Search:** ChromaDB
-- **Embedding Model:** Google EmbeddingGemma 2
+- **Lexical Search & BM25 Ranking:** SQLite with FTS5 extension (Phase 4)
+- **Dense Vector Search:** ChromaDB (Phase 5)
+- **Embedding Model:** Google EmbeddingGemma 2 (Phase 5)
 
 ---
 
@@ -51,8 +52,20 @@ OmniSearch/
 │   │   │       └── router.py              # V1 API router aggregator
 │   │   ├── core/
 │   │   │   ├── __init__.py
-│   │   │   ├── config.py                  # Pydantic Settings configuration
+│   │   │   ├── config.py                  # Pydantic Settings & storage directory configs
 │   │   │   └── logging.py                 # Centralized logging setup
+│   │   ├── database/                      # Canonical persistence layer (Phase 3)
+│   │   │   ├── repositories/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── chunks.py              # Chunks repository
+│   │   │   │   ├── files.py               # Files repository & reconciliation
+│   │   │   │   ├── folders.py             # Folders repository
+│   │   │   │   ├── jobs.py                # Index jobs repository
+│   │   │   │   └── settings.py            # Key-value settings repository
+│   │   │   ├── connection.py              # Connection lifecycle & WAL transactions
+│   │   │   ├── initialization.py          # DB initialization & interrupted job recovery
+│   │   │   ├── migrations.py              # Versioned schema migrations
+│   │   │   └── __init__.py
 │   │   ├── ingestion/                     # Multi-format ingestion engine (Phase 2)
 │   │   │   ├── extractors/
 │   │   │   │   ├── __init__.py
@@ -70,23 +83,36 @@ OmniSearch/
 │   │   │   ├── registry.py                # Extractor registry
 │   │   │   ├── scanner.py                 # Recursive folder scanner
 │   │   │   └── __init__.py
-│   │   ├── models/                        # Domain & persistence models
-│   │   ├── schemas/                       # Pydantic API schemas
+│   │   ├── models/                        # Domain models
+│   │   ├── processing/                    # Content processing & chunking (Phase 3)
+│   │   │   ├── chunker.py                 # Intelligent boundary-preserving chunker
+│   │   │   ├── normalizer.py              # Format-aware Unicode & whitespace normalizer
+│   │   │   ├── pipeline.py                # Content transformation pipeline
+│   │   │   ├── token_counter.py           # Replaceable token estimation interface
+│   │   │   └── __init__.py
+│   │   ├── schemas/                       # Pydantic API & domain schemas
 │   │   │   ├── __init__.py
 │   │   │   ├── extraction.py              # ExtractedDocument & ExtractedSegment schemas
-│   │   │   └── health.py                  # HealthResponse schema
-│   │   ├── services/                      # Business logic services
+│   │   │   ├── health.py                  # HealthResponse schema
+│   │   │   └── processing.py              # DocumentChunk & DB entity schemas
+│   │   ├── services/                      # Application business logic
+│   │   │   ├── __init__.py
+│   │   │   └── indexer.py                 # Persistent IndexingService
 │   │   ├── utils/                         # Reusable utilities
 │   │   ├── __init__.py
 │   │   └── main.py                        # FastAPI application entry point
 │   ├── tests/
 │   │   ├── __init__.py
 │   │   ├── conftest.py                    # Pytest test fixtures
-│   │   ├── test_coordinator.py           # Coordinator batch & failure tests
+│   │   ├── test_chunker.py                # Chunking & token counting tests
+│   │   ├── test_coordinator.py            # Coordinator batch & failure tests
+│   │   ├── test_database.py               # SQLite tables, cascades & transactions tests
 │   │   ├── test_extractors.py             # Multi-format genuine extraction tests
 │   │   ├── test_file_detector.py          # Security & signature tests
 │   │   ├── test_hashing.py                # Streaming SHA-256 tests
 │   │   ├── test_health.py                 # Health endpoint automated tests
+│   │   ├── test_indexer.py                # Persistent indexing service tests
+│   │   ├── test_normalizer.py             # Unicode & formatting normalization tests
 │   │   └── test_scanner.py                # Recursive folder scanner tests
 │   ├── pyproject.toml                     # Backend project & dependency metadata
 │   └── .env.example                       # Environment variable template
