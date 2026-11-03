@@ -73,3 +73,4 @@ class DatabaseConnectionManager:
             raise
         finally:
             conn.close()
+

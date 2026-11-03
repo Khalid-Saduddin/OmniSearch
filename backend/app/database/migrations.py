@@ -137,3 +137,4 @@ def apply_migrations(conn: sqlite3.Connection) -> int:
     if applied_count > 0:
         logger.info("Successfully applied %d migration(s). Current schema version: v%d", applied_count, highest_version)
     return highest_version
+

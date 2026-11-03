@@ -178,3 +178,4 @@ class FileRepository:
             error_message=row["error_message"],
             metadata_json=row["metadata_json"],
         )
+

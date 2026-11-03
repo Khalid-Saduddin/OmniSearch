@@ -100,3 +100,4 @@ class ChunkRepository:
             end_line=row["end_line"],
             metadata_json=row["metadata_json"],
         )
+

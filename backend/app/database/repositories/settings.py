@@ -44,3 +44,4 @@ class SettingRepository:
         deleted = cursor.rowcount > 0
         cursor.close()
         return deleted
+

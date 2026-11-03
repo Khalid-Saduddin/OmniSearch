@@ -105,3 +105,4 @@ class JobRepository:
             finished_at=row["finished_at"],
             error_message=row["error_message"],
         )
+

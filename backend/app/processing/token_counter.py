@@ -69,3 +69,4 @@ _default_counter = ApproximateTokenCounter()
 def get_default_token_counter() -> BaseTokenCounter:
     """Return the global default token counter instance."""
     return _default_counter
+

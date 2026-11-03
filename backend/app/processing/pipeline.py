@@ -50,3 +50,4 @@ class ContentProcessingPipeline:
         chunks = self.chunker.chunk_document(normalized_doc)
 
         return normalized_doc, chunks
+

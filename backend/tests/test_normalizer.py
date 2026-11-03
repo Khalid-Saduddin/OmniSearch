@@ -72,3 +72,4 @@ def test_normalize_segment_helper() -> None:
 def test_empty_content_returns_empty_string() -> None:
     assert TextNormalizer.normalize_text("") == ""
     assert TextNormalizer.normalize_text("   \n\n   ") == ""
+

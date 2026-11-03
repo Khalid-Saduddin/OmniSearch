@@ -28,12 +28,14 @@ class IngestionCoordinator:
         self,
         file_path: Union[str, Path, ScannedFile],
         compute_hash: bool = True,
+        precomputed_sha256: Optional[str] = None,
     ) -> ExtractedDocument:
         """Extract a single document with full exception isolation.
 
         Args:
             file_path: File system path or ScannedFile object.
-            compute_hash: Whether to calculate the streaming SHA-256 hash.
+            compute_hash: Whether to calculate the streaming SHA-256 hash if not precomputed.
+            precomputed_sha256: Pre-computed SHA-256 hex string to avoid redundant hashing.
 
         Returns:
             ExtractedDocument populated with results, status, segments, and error messages if any.
@@ -75,9 +77,11 @@ class IngestionCoordinator:
                 error_message=f"Permission or I/O error checking file stat: {exc}",
             )
 
-        # Compute SHA-256 hash safely using streaming chunks
+        # Compute SHA-256 hash safely using streaming chunks if not precomputed
         sha256_hash: Optional[str] = None
-        if compute_hash:
+        if precomputed_sha256 is not None:
+            sha256_hash = precomputed_sha256
+        elif compute_hash:
             sha256_hash = try_calculate_sha256(target_path)
 
         # 1. Inspect signature and extension validation

@@ -122,3 +122,4 @@ def test_interrupted_jobs_recovery_policy(tmp_path: Path) -> None:
         assert job.status == IndexJobStatus.INTERRUPTED
         assert job.finished_at is not None
         assert "interrupted" in (job.error_message or "").lower()
+

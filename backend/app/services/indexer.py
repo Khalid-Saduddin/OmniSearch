@@ -88,23 +88,44 @@ class IndexingService:
                 with self.db.connection() as conn:
                     existing_file = FileRepository.get_by_path(conn, str(file_path))
 
-                # Duplicate / unchanged file detection
-                if not force_reindex and existing_file and existing_file.status == ExtractionStatus.SUCCESS.value:
-                    if existing_file.size_bytes == file_size and existing_file.modified_at == mtime_iso:
-                        # Fast identity match: file unchanged
-                        logger.debug("File unchanged, skipping re-indexing: %s", file_path.name)
-                        skipped_count += 1
-                        with self.db.transaction() as conn:
-                            JobRepository.update_progress(
-                                conn, job_id, processed_count, successful_count, failed_count, skipped_count
-                            )
-                        continue
+                # Calculate SHA-256 once per file to avoid redundant re-hashing
+                current_sha256 = try_calculate_sha256(file_path)
 
-                # File is new or modified: perform Phase 2 extraction
-                extracted_doc = self.coordinator.extract_document(scanned_file, compute_hash=True)
+                # Reliable unchanged-file detection:
+                # Do not rely solely on size/mtime; verify SHA-256 before skipping
+                if (
+                    not force_reindex
+                    and existing_file
+                    and existing_file.status == ExtractionStatus.SUCCESS.value
+                    and existing_file.sha256 is not None
+                    and current_sha256 is not None
+                    and current_sha256 == existing_file.sha256
+                ):
+                    # Content is verified identical via SHA-256 hash.
+                    # Update modification metadata in DB if mtime changed on disk (e.g. touch/copy)
+                    if existing_file.modified_at != mtime_iso or existing_file.size_bytes != file_size:
+                        with self.db.transaction() as conn:
+                            updated_rec = existing_file.model_copy(
+                                update={"modified_at": mtime_iso, "size_bytes": file_size}
+                            )
+                            FileRepository.upsert(conn, updated_rec)
+
+                    logger.debug("File content unchanged (verified via SHA-256), skipping: %s", file_path.name)
+                    skipped_count += 1
+                    with self.db.transaction() as conn:
+                        JobRepository.update_progress(
+                            conn, job_id, processed_count, successful_count, failed_count, skipped_count
+                        )
+                    continue
+
+                # File is new or modified: perform Phase 2 extraction using precomputed hash
+                extracted_doc = self.coordinator.extract_document(
+                    scanned_file,
+                    compute_hash=False,
+                    precomputed_sha256=current_sha256,
+                )
 
                 if extracted_doc.extraction_status in (ExtractionStatus.FAILED, ExtractionStatus.UNSUPPORTED):
-                    # Record failure status in database and clean any stale chunks
                     logger.warning("Indexing failed for file '%s': %s", file_path.name, extracted_doc.error_message)
                     failed_count += 1
 
@@ -124,7 +145,17 @@ class IndexingService:
 
                     with self.db.transaction() as conn:
                         saved_file_id = FileRepository.upsert(conn, failed_record)
-                        ChunkRepository.delete_by_file_id(conn, saved_file_id)
+                        # Safe failed re-indexing:
+                        # If this file was previously successfully indexed, PRESERVE its existing chunks!
+                        # Only delete chunks if this file was never successfully indexed before.
+                        if not existing_file or existing_file.status != ExtractionStatus.SUCCESS.value:
+                            ChunkRepository.delete_by_file_id(conn, saved_file_id)
+                        else:
+                            logger.info(
+                                "Preserved previously committed chunks for file '%s' following failed re-indexing",
+                                file_path.name,
+                            )
+
                         JobRepository.update_progress(
                             conn, job_id, processed_count, successful_count, failed_count, skipped_count
                         )
@@ -164,6 +195,14 @@ class IndexingService:
                 logger.error("Unhandled error processing file '%s': %s", file_path.name, exc, exc_info=True)
                 failed_count += 1
                 with self.db.transaction() as conn:
+                    if existing_file:
+                        err_record = existing_file.model_copy(
+                            update={
+                                "status": ExtractionStatus.FAILED.value,
+                                "error_message": f"Processing error: {exc}",
+                            }
+                        )
+                        FileRepository.upsert(conn, err_record)
                     JobRepository.update_progress(
                         conn, job_id, processed_count, successful_count, failed_count, skipped_count
                     )
@@ -196,3 +235,4 @@ class IndexingService:
             final_job.failed_files,
         )
         return final_job
+

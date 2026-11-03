@@ -166,3 +166,4 @@ def test_empty_document_produces_no_chunks() -> None:
     )
     chunks = chunker.chunk_document(doc)
     assert len(chunks) == 0
+

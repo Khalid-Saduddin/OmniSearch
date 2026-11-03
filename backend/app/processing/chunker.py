@@ -285,3 +285,4 @@ class DocumentChunker:
             end_line=segment.end_line,
             metadata={**common_meta, **segment.metadata},
         )
+

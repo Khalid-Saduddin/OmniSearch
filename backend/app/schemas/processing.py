@@ -96,3 +96,4 @@ class IndexJobRecord(BaseModel):
     started_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     finished_at: Optional[str] = None
     error_message: Optional[str] = None
+

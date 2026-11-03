@@ -55,3 +55,4 @@ def init_db(
         recover_interrupted_jobs(manager)
 
     return manager
+
