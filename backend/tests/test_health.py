@@ -30,3 +30,4 @@ async def test_health_endpoint_schema_structure(async_client: AsyncClient) -> No
     assert isinstance(data["version"], str)
     assert isinstance(data["environment"], str)
     assert isinstance(data["timestamp"], str)
+

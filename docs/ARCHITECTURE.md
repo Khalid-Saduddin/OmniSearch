@@ -112,3 +112,4 @@ flowchart LR
 3. **Loopback Isolation:** The backend server defaults strictly to `127.0.0.1:8000`, preventing exposure across local networks.
 4. **Structured Schemas:** All incoming and outgoing data contracts are enforced via Pydantic schemas, preventing arbitrary or unstructured dictionary payloads.
 5. **Preservation of User Data:** OmniSearch never modifies, moves, or rewrites original user files during indexing or searching.
+

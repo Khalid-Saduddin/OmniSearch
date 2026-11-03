@@ -21,3 +21,4 @@ async def get_health(settings: Settings = Depends(get_settings)) -> HealthRespon
         version=settings.app_version,
         environment=settings.environment,
     )
+

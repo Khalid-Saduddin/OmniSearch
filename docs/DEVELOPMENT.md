@@ -130,3 +130,4 @@ npm run build
    - Keep `.env.example` updated when adding new configuration parameters.
    - All Python code must include type hints.
    - All API endpoints must use explicit Pydantic request/response schemas.
+

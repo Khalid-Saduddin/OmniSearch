@@ -38,3 +38,4 @@ def get_logger(name: str) -> logging.Logger:
         name: Typically __name__ of the calling module.
     """
     return logging.getLogger(name)
+

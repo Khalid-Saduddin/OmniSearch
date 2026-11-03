@@ -172,3 +172,4 @@ For deeper architectural details, refer to [ARCHITECTURE.md](docs/ARCHITECTURE.m
 ## 7. License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
