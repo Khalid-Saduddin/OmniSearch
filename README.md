@@ -10,10 +10,16 @@ OmniSearch is a professional, local-first, AI-powered multifile search and perso
 ## 1. Technology Stack
 
 ### Backend
-- **Python 3.11+**
+- **Python 3.11+** (Tested on Python 3.15.1 Windows AMD64)
 - **FastAPI** — High-performance ASGI web framework
 - **Pydantic & Pydantic Settings** — Strongly-typed validation and centralized environment configuration
 - **Uvicorn** — Production ASGI server
+- **PyMuPDF (1.28.2)** — High-performance PDF document and page text extraction
+- **python-docx (1.2.0)** — Word (.docx) paragraph and table extraction
+- **python-pptx (1.0.2)** — PowerPoint (.pptx) slide and shape extraction
+- **openpyxl (3.1.5)** — Excel (.xlsx) sheet and row data extraction
+- **BeautifulSoup4 (4.15.0)** — Clean text and semantic element extraction from HTML
+- **charset-normalizer (3.5.2)** — Robust charset detection across text, code, and CSV formats
 
 ### Frontend
 - **Next.js 15 (App Router)** — Modern React application framework
@@ -40,27 +46,50 @@ OmniSearch/
 │   │   │   └── v1/
 │   │   │       ├── endpoints/
 │   │   │       │   ├── __init__.py
-│   │   │       │   └── health.py       # Health check route handler
+│   │   │       │   └── health.py          # Health check route handler
 │   │   │       ├── __init__.py
-│   │   │       └── router.py           # V1 API router aggregator
+│   │   │       └── router.py              # V1 API router aggregator
 │   │   ├── core/
 │   │   │   ├── __init__.py
-│   │   │   ├── config.py               # Pydantic Settings configuration
-│   │   │   └── logging.py              # Centralized logging setup
-│   │   ├── models/                     # Domain & persistence models
-│   │   ├── schemas/                    # Pydantic API schemas
+│   │   │   ├── config.py                  # Pydantic Settings configuration
+│   │   │   └── logging.py                 # Centralized logging setup
+│   │   ├── ingestion/                     # Multi-format ingestion engine (Phase 2)
+│   │   │   ├── extractors/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── base.py                # BaseExtractor interface
+│   │   │   │   ├── csv.py                 # CSV/TSV reader extractor
+│   │   │   │   ├── docx.py                # Word document extractor
+│   │   │   │   ├── html.py                # HTML BeautifulSoup extractor
+│   │   │   │   ├── pdf.py                 # PDF PyMuPDF extractor
+│   │   │   │   ├── pptx.py                # PPTX slide extractor
+│   │   │   │   ├── text.py                # TXT, Code & Markdown extractor
+│   │   │   │   └── xlsx.py                # Excel openpyxl extractor
+│   │   │   ├── coordinator.py             # Batch coordinator & fault isolation
+│   │   │   ├── file_detector.py           # Signature validation & executable blocker
+│   │   │   ├── hashing.py                 # Streaming SHA-256 chunked hasher
+│   │   │   ├── registry.py                # Extractor registry
+│   │   │   ├── scanner.py                 # Recursive folder scanner
+│   │   │   └── __init__.py
+│   │   ├── models/                        # Domain & persistence models
+│   │   ├── schemas/                       # Pydantic API schemas
 │   │   │   ├── __init__.py
-│   │   │   └── health.py               # HealthResponse schema
-│   │   ├── services/                   # Business logic services
-│   │   ├── utils/                      # Reusable utilities
+│   │   │   ├── extraction.py              # ExtractedDocument & ExtractedSegment schemas
+│   │   │   └── health.py                  # HealthResponse schema
+│   │   ├── services/                      # Business logic services
+│   │   ├── utils/                         # Reusable utilities
 │   │   ├── __init__.py
-│   │   └── main.py                     # FastAPI application entry point
+│   │   └── main.py                        # FastAPI application entry point
 │   ├── tests/
 │   │   ├── __init__.py
-│   │   ├── conftest.py                 # Pytest test fixtures
-│   │   └── test_health.py              # Health endpoint automated tests
-│   ├── pyproject.toml                  # Backend project & dependency metadata
-│   └── .env.example                    # Environment variable template
+│   │   ├── conftest.py                    # Pytest test fixtures
+│   │   ├── test_coordinator.py           # Coordinator batch & failure tests
+│   │   ├── test_extractors.py             # Multi-format genuine extraction tests
+│   │   ├── test_file_detector.py          # Security & signature tests
+│   │   ├── test_hashing.py                # Streaming SHA-256 tests
+│   │   ├── test_health.py                 # Health endpoint automated tests
+│   │   └── test_scanner.py                # Recursive folder scanner tests
+│   ├── pyproject.toml                     # Backend project & dependency metadata
+│   └── .env.example                       # Environment variable template
 │
 ├── frontend/
 │   ├── app/

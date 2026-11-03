@@ -105,7 +105,52 @@ flowchart LR
 
 ---
 
-## 4. Architectural Decisions & Principles
+## 4. Multi-Format Ingestion & Extraction Engine (Phase 2 Implemented)
+
+The document ingestion subsystem is implemented inside `backend/app/ingestion/` as a decoupled, fault-isolated pipeline:
+
+```mermaid
+flowchart TD
+    Scanner["FolderScanner\n(Recursive traversal, symlink skip, directory pruning)"] --> DiscoveredFiles["Discovered Files List"]
+    DiscoveredFiles --> Coordinator["IngestionCoordinator\n(Fault isolation, batch tracking)"]
+    
+    Coordinator --> Hashing["Streaming SHA-256 Hasher\n(Chunked 64KB I/O)"]
+    Coordinator --> Detector["FileTypeDetector\n(Signature check, executable block)"]
+    Coordinator --> Registry["ExtractorRegistry\n(Format-to-Handler Mapping)"]
+    
+    Registry --> Extractors{"Specialized Extractors"}
+    
+    Extractors --> PDF["PdfExtractor (PyMuPDF)"]
+    Extractors --> DOCX["DocxExtractor (python-docx)"]
+    Extractors --> PPTX["PptxExtractor (python-pptx)"]
+    Extractors --> XLSX["XlsxExtractor (openpyxl)"]
+    Extractors --> Text["TextExtractor (Text, Code, Markdown)"]
+    Extractors --> CSV["CsvExtractor (csv module)"]
+    Extractors --> HTML["HtmlExtractor (BeautifulSoup4)"]
+    
+    Extractors --> StandardContract["ExtractedDocument\n• Segments with line/page/slide/row\n• Metadata & Timestamps\n• ExtractionStatus (success/partial/failed/empty)"]
+```
+
+### 4.1 Ingestion Components
+1. **`FolderScanner` (`app/ingestion/scanner.py`):**
+   - Traversing local paths recursively with in-place directory exclusion (`.git`, `node_modules`, `.venv`, `__pycache__`, etc.).
+   - Follows no symbolic links by default to prevent traversal loops.
+   - Categorizes findings into supported, unsupported, and skipped files.
+2. **`FileTypeDetector` (`app/ingestion/file_detector.py`):**
+   - Validates file headers without loading entire files into memory.
+   - Blocks disguised executables (`MZ`, `ELF`, Mach-O) regardless of file extension.
+   - Validates format headers (e.g. `%PDF-`, Zip headers for DOCX/PPTX/XLSX).
+3. **`Streaming Hasher` (`app/ingestion/hashing.py`):**
+   - Computes deterministic SHA-256 digests in 64 KB streaming blocks.
+4. **`ExtractorRegistry` (`app/ingestion/registry.py`):**
+   - Manages registered extractors and maps extensions to their respective handlers.
+5. **`IngestionCoordinator` (`app/ingestion/coordinator.py`):**
+   - Orchestrates extraction across single files or batches.
+   - Enforces complete error isolation: an individual file failure (e.g. corrupt PDF or unreadable DOCX) never aborts the batch.
+
+---
+
+## 5. Architectural Decisions & Principles
 
 1. **Local-First & Privacy-Preserving:** All raw document files, indices, and vector embeddings remain on the user's local disk. No external uploads or cloud-dependent APIs are required for keyword and local semantic discovery.
 2. **Decoupled API Architecture:** The FastAPI backend and Next.js frontend are strictly decoupled. This allows independent testing, headless operation, and straightforward embedding into Electron in later phases.

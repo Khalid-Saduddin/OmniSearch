@@ -100,9 +100,12 @@ Run pytest using the virtual environment:
 ```
 
 This tests:
-- HTTP 200 response on `GET /api/v1/health`
-- Schema compliance with the Pydantic `HealthResponse` model
-- Response payload property structure and types
+- **Phase 1 Foundations:** HTTP 200 response on `GET /api/v1/health`, schema compliance with `HealthResponse`.
+- **Ingestion Hashing:** Streaming 64 KB chunked SHA-256 computation, empty files, and error handling.
+- **File Type Detector:** Extension validation, signature inspection, disguised executable blocking.
+- **Folder Scanner:** Recursive folder traversal, directory exclusion (`.git`, `node_modules`, `.venv`), missing directory handling.
+- **Multi-Format Extractors:** Genuine document parsing for PDF, DOCX, PPTX, XLSX, TXT, Markdown, Source Code, CSV, and HTML.
+- **Ingestion Coordinator:** Batch processing, fault isolation, and uninterrupted batch execution upon individual file corruption.
 
 ### 4.2 Frontend Checks
 
