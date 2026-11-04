@@ -81,3 +81,4 @@ def test_cli_successful_indexing(tmp_path: Path) -> None:
     assert "Files Indexed     : 0" in res_second.stdout
     assert "Files Skipped     : 2" in res_second.stdout
     assert "Total Chunks      : 2" in res_second.stdout
+
