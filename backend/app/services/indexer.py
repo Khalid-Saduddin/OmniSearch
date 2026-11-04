@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from typing import List, Optional, Set, Union
+from typing import Any, List, Optional, Set, Union
 from app.core.logging import get_logger
 from app.database.connection import DatabaseConnectionManager
 from app.database.repositories.chunks import ChunkRepository
@@ -29,17 +29,20 @@ class IndexingService:
         scanner: Optional[FolderScanner] = None,
         coordinator: Optional[IngestionCoordinator] = None,
         pipeline: Optional[ContentProcessingPipeline] = None,
+        semantic_pipeline: Optional[Any] = None,
     ) -> None:
         self.db = db
         self.scanner = scanner or FolderScanner()
         self.coordinator = coordinator or IngestionCoordinator()
         self.pipeline = pipeline or ContentProcessingPipeline()
+        self.semantic_pipeline = semantic_pipeline
 
     def index_folder(
         self,
         folder_path: Union[str, Path],
         reconcile_deleted: bool = True,
         force_reindex: bool = False,
+        generate_embeddings: bool = False,
     ) -> IndexJobRecord:
         """Scan, process, and persist all supported files within a folder.
 
@@ -214,6 +217,19 @@ class IndexingService:
                 deleted_paths = FileRepository.delete_missing_in_folder(conn, folder_id, present_paths)
                 if deleted_paths:
                     logger.info("Reconciliation removed %d deleted file records from database", len(deleted_paths))
+            if self.semantic_pipeline:
+                try:
+                    self.semantic_pipeline.reconcile_vector_store()
+                except Exception as exc:
+                    logger.warning("Vector store reconciliation warning: %s", exc)
+
+        # 4b. Optional semantic embedding generation
+        if generate_embeddings and self.semantic_pipeline:
+            try:
+                embedded_count = self.semantic_pipeline.sync_embeddings()
+                logger.info("Generated semantic embeddings for %d chunks", embedded_count)
+            except Exception as exc:
+                logger.error("Error generating semantic embeddings during indexing: %s", exc, exc_info=True)
 
         # 5. Finalize job status
         final_status = (

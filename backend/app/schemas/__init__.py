@@ -23,6 +23,9 @@ from app.schemas.search import (
     SearchQuery,
     SearchResultItem,
     SearchResponse,
+    SemanticSearchQuery,
+    SemanticSearchResultItem,
+    SemanticSearchResponse,
 )
 
 __all__ = [
@@ -44,4 +47,7 @@ __all__ = [
     "SearchQuery",
     "SearchResultItem",
     "SearchResponse",
+    "SemanticSearchQuery",
+    "SemanticSearchResultItem",
+    "SemanticSearchResponse",
 ]

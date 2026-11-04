@@ -19,19 +19,20 @@ flowchart TB
         
         subgraph APIRoutes["API V1 Endpoints"]
             HealthAPI["/api/v1/health"]
-            SearchAPI["/api/v1/search (Planned)"]
-            IndexAPI["/api/v1/index (Planned)"]
+            SearchAPI["/api/v1/search (Keyword BM25)"]
+            SemanticAPI["/api/v1/search/semantic (Dense Vector)"]
         end
 
-        subgraph CoreSubsystems["Core Processing Pipelines (Planned)"]
-            DocPipelines["Document Ingestion & Extraction\n(PDF, DOCX, XLSX, TXT)"]
-            EmbeddingEngine["Embedding Runtime\n(Google EmbeddingGemma 2)"]
-            SearchCoordinator["Hybrid Search Engine\n(Reciprocal Rank Fusion)"]
+        subgraph CoreSubsystems["Core Processing Pipelines"]
+            DocPipelines["Document Ingestion & Extraction\n(PDF, DOCX, PPTX, XLSX, TXT, HTML)"]
+            ProcessingPipeline["Boundary-Preserving Chunking & Normalization"]
+            EmbeddingEngine["Embedding Runtime\n(Google EmbeddingGemma 2 via PyTorch / Transformers)"]
+            SemanticPipeline["Semantic Pipeline & Reconciliation\n(Batch embedding to ChromaDB)"]
         end
 
-        subgraph StorageLayer["Local Storage Engines (Planned)"]
-            SQLiteStore[("SQLite + FTS5\n(Metadata & Full-Text Lexical Index)")]
-            ChromaStore[("ChromaDB\n(Dense Vector Index)")]
+        subgraph StorageLayer["Local Storage Engines"]
+            SQLiteStore[("SQLite + FTS5\n(Metadata, Chunks & Lexical Index)")]
+            ChromaStore[("ChromaDB\n(Dense Vector Index, Cosine Space)")]
         end
     end
 

@@ -73,6 +73,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 Once running, verify backend operation:
 - **Health Check Endpoint:** `http://127.0.0.1:8000/api/v1/health`
 - **Keyword Search Endpoint (POST / GET):** `http://127.0.0.1:8000/api/v1/search`
+- **Semantic Search Endpoint (POST / GET):** `http://127.0.0.1:8000/api/v1/search/semantic`
 - **Interactive Swagger Documentation:** `http://127.0.0.1:8000/docs`
 - **Interactive OpenAPI ReDoc:** `http://127.0.0.1:8000/redoc`
 
@@ -110,7 +111,11 @@ This tests:
 - **Text Normalization:** Unicode NFKC normalization, control character removal, line endings, code indentation preservation.
 - **Intelligent Chunking:** Target size ~500 tokens, ~80 token overlap, sentence and code line boundary preservation, location metadata retention.
 - **Database Architecture:** Table and index creation, foreign key CASCADE deletions, transaction rollback, persistence across re-open, migrations.
-- **Persistent Indexing Service:** New file indexing, duplicate skipping, modified file chunk replacement, deleted file reconciliation, and interrupted job recovery.
+- **FTS5 Keyword Search:** Exact phrases, wildcard prefixes, sanitization, BM25 scoring, HTML-safe snippet formatting.
+- **Embedding Subsystem (Phase 5):** EmbeddingGemma 2 task prompts, Matryoshka dimension validation, lazy loading, deterministic test doubles.
+- **ChromaDB Storage (Phase 5):** Persistent vector CRUD, cosine distance mapping, metadata filtering ($and, $in), chunk ID tracking.
+- **Semantic Pipeline & Reconciliation (Phase 5):** Batch chunk embedding, idempotency, vector cleanup upon deletion, recovery.
+- **Semantic Search Engine (Phase 5):** Natural language vector retrieval, metadata hydration, duplicate consolidation per file, stale document flags.
 
 ### 4.2 Frontend Checks
 

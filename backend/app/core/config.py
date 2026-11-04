@@ -79,6 +79,32 @@ class Settings(BaseSettings):
         description="Token overlap between consecutive chunks for semantic context continuity",
     )
 
+    # Vector Storage and Semantic Embeddings (Phase 5)
+    vectors_dir: Path = Field(
+        default_factory=lambda: get_default_local_appdata() / "vectors",
+        description="Directory for ChromaDB local persistent vector storage",
+    )
+    embedding_model_id: str = Field(
+        default="google/embeddinggemma-2",
+        description="HuggingFace model identifier for Google EmbeddingGemma 2",
+    )
+    embedding_dimension: int = Field(
+        default=768,
+        description="Target vector dimension (EmbeddingGemma 2 default: 768; supports MRL: 512, 256, 128)",
+    )
+    embedding_batch_size: int = Field(
+        default=16,
+        description="Batch size for generating document chunk embeddings on CPU",
+    )
+    embedding_device: str = Field(
+        default="cpu",
+        description="Device for embedding model inference ('cpu' or 'cuda' if supported)",
+    )
+    embedding_precision: str = Field(
+        default="float32",
+        description="Floating-point precision for embedding inference ('float32' or 'bfloat16')",
+    )
+
     @property
     def resolved_db_path(self) -> Path:
         """Resolve database path, ensuring data directory exists."""

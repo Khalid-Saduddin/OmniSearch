@@ -162,16 +162,18 @@ def test_phase3_migration_startup_regression(tmp_path: Path) -> None:
     # 3. Trigger startup init_db on the existing Phase 3 database (must not fail with IntegrityError)
     db = init_db(db_path=db_file)
 
-    # 4. Verify both migrations are recorded properly with non-null names
+    # 4. Verify migrations are recorded properly with non-null names
     with db.connection() as verify_conn:
         cur = verify_conn.cursor()
         cur.execute("SELECT version, name, applied_at FROM schema_migrations ORDER BY version ASC;")
         rows = cur.fetchall()
-        assert len(rows) == 2
+        assert len(rows) == 3
         assert rows[0][0] == 1
         assert rows[0][1] == "001_initial_schema"
         assert rows[1][0] == 2
         assert rows[1][1] == "002_fts5_search"
+        assert rows[2][0] == 3
+        assert rows[2][1] == "003_semantic_embeddings"
 
         # 5. Verify pre-existing data was preserved and backfilled into chunks_fts
         cur.execute("SELECT chunk_id, file_id, filename, content FROM chunks_fts WHERE chunks_fts MATCH 'confidential';")

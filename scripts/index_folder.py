@@ -79,6 +79,11 @@ Usage Examples:
         help="Custom path to the SQLite database. Defaults to standard local app storage.",
     )
     parser.add_argument(
+        "--embed",
+        action="store_true",
+        help="Generate semantic vector embeddings and persist to ChromaDB.",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -146,12 +151,33 @@ def main() -> int:
 
         start_time = time.perf_counter()
 
+        # Configure semantic pipeline if requested
+        semantic_pipeline = None
+        if args.embed:
+            from app.embeddings.configuration import EmbeddingConfig
+            from app.embeddings.embedder import EmbeddingGemmaEmbedder
+            from app.services.semantic_pipeline import SemanticPipeline
+            from app.vector_store.chroma import ChromaVectorStore
+
+            settings = get_settings()
+            vstore = ChromaVectorStore(persist_dir=settings.vectors_dir)
+            cfg = EmbeddingConfig(
+                model_id=settings.embedding_model_id,
+                dimension=settings.embedding_dimension,
+                batch_size=settings.embedding_batch_size,
+                device=settings.embedding_device,
+                precision=settings.embedding_precision,
+            )
+            embedder = EmbeddingGemmaEmbedder(config=cfg)
+            semantic_pipeline = SemanticPipeline(db=db_manager, embedder=embedder, vector_store=vstore)
+
         # Execute indexing pipeline via existing IndexingService
-        indexer = IndexingService(db=db_manager)
+        indexer = IndexingService(db=db_manager, semantic_pipeline=semantic_pipeline)
         job_record = indexer.index_folder(
             folder_path=resolved_folder,
             reconcile_deleted=not args.no_reconcile,
             force_reindex=args.force,
+            generate_embeddings=args.embed,
         )
 
         elapsed_seconds = round(time.perf_counter() - start_time, 2)

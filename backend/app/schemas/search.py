@@ -76,3 +76,58 @@ class SearchResponse(BaseModel):
     limit: int
     offset: int
     execution_time_ms: float
+
+
+class SemanticSearchQuery(BaseModel):
+    """Incoming semantic search query request."""
+
+    query: str = Field(..., min_length=1, description="Natural language semantic search query.")
+    filter: Optional[SearchFilter] = Field(default=None, description="Optional search filters.")
+    limit: int = Field(default=20, ge=1, le=100, description="Maximum number of results to return.")
+    offset: int = Field(default=0, ge=0, description="Offset for pagination.")
+    min_similarity: float = Field(
+        default=-1.0,
+        ge=-1.0,
+        le=1.0,
+        description="Minimum cosine similarity threshold.",
+    )
+
+
+class SemanticSearchResultItem(BaseModel):
+    """Individual document chunk match from semantic vector search."""
+
+    file_id: int
+    chunk_id: int
+    filename: str
+    file_path: str
+    file_type: str
+    file_status: str
+    is_stale: bool = Field(
+        default=False,
+        description="True if previously indexed content was retained after a subsequent re-indexing error.",
+    )
+    chunk_index: int
+    content: str
+    snippet: str = Field(..., description="Contextual text snippet from the chunk.")
+    score: float = Field(..., description="Normalized relevance score [0.0, 1.0] (higher is better).")
+    cosine_similarity: float = Field(..., description="Cosine similarity score in range [-1.0, 1.0].")
+    distance: float = Field(..., description="Raw cosine distance in range [0.0, 2.0].")
+    page_number: Optional[int] = None
+    slide_number: Optional[int] = None
+    sheet_name: Optional[str] = None
+    row_number: Optional[int] = None
+    start_line: Optional[int] = None
+    end_line: Optional[int] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Custom chunk metadata.")
+
+
+class SemanticSearchResponse(BaseModel):
+    """Structured semantic search response returned to clients."""
+
+    query: str
+    total_results: int
+    results: List[SemanticSearchResultItem]
+    limit: int
+    offset: int
+    execution_time_ms: float
+    model_id: str

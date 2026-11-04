@@ -167,10 +167,28 @@ def migration_v2(conn: sqlite3.Connection) -> None:
     cursor.close()
 
 
+def migration_v3(conn: sqlite3.Connection) -> None:
+    """Phase 5 migration: chunk_embeddings table for tracking vector embedding metadata."""
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS chunk_embeddings (
+        chunk_id INTEGER PRIMARY KEY REFERENCES chunks(id) ON DELETE CASCADE,
+        file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+        model_name TEXT NOT NULL,
+        dimensions INTEGER NOT NULL,
+        embedded_at TEXT NOT NULL
+    );
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_chunk_embeddings_file_id ON chunk_embeddings(file_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_chunk_embeddings_model ON chunk_embeddings(model_name);")
+    cursor.close()
+
+
 # Ordered migration registry: (version, name, migration_function)
 MIGRATIONS: List[Tuple[int, str, Callable[[sqlite3.Connection], None]]] = [
     (1, "001_initial_schema", migration_v1),
     (2, "002_fts5_search", migration_v2),
+    (3, "003_semantic_embeddings", migration_v3),
 ]
 
 
