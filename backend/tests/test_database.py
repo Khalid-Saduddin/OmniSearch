@@ -123,3 +123,87 @@ def test_interrupted_jobs_recovery_policy(tmp_path: Path) -> None:
         assert job.finished_at is not None
         assert "interrupted" in (job.error_message or "").lower()
 
+
+def test_phase3_migration_startup_regression(tmp_path: Path) -> None:
+    """Regression test reproducing startup with an existing Phase 3 database containing 'name' NOT NULL."""
+    import sqlite3
+    from app.database.migrations import migration_v1
+
+    db_file = tmp_path / "phase3_existing.db"
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+
+    # 1. Establish exact Phase 3 schema_migrations table with name NOT NULL
+    cursor.execute("""
+    CREATE TABLE schema_migrations (
+        version INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        applied_at TEXT NOT NULL
+    );
+    """)
+    cursor.execute(
+        "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?);",
+        (1, "001_initial_schema", "2026-11-03T16:22:47.927258+00:00"),
+    )
+
+    # 2. Apply migration_v1 tables and seed pre-existing Phase 3 data
+    migration_v1(conn)
+    cursor.execute("""
+    INSERT INTO files (id, path, filename, extension, file_type, modified_at, indexed_at, status, metadata_json)
+    VALUES (1, 'C:/docs/contract.pdf', 'contract.pdf', '.pdf', 'pdf', '2026-11-03T00:00:00Z', '2026-11-03T00:00:00Z', 'success', '{}');
+    """)
+    cursor.execute("""
+    INSERT INTO chunks (id, file_id, chunk_index, content, token_count)
+    VALUES (1, 1, 0, 'Confidential non-disclosure agreement clauses', 10);
+    """)
+    conn.commit()
+    conn.close()
+
+    # 3. Trigger startup init_db on the existing Phase 3 database (must not fail with IntegrityError)
+    db = init_db(db_path=db_file)
+
+    # 4. Verify both migrations are recorded properly with non-null names
+    with db.connection() as verify_conn:
+        cur = verify_conn.cursor()
+        cur.execute("SELECT version, name, applied_at FROM schema_migrations ORDER BY version ASC;")
+        rows = cur.fetchall()
+        assert len(rows) == 2
+        assert rows[0][0] == 1
+        assert rows[0][1] == "001_initial_schema"
+        assert rows[1][0] == 2
+        assert rows[1][1] == "002_fts5_search"
+
+        # 5. Verify pre-existing data was preserved and backfilled into chunks_fts
+        cur.execute("SELECT chunk_id, file_id, filename, content FROM chunks_fts WHERE chunks_fts MATCH 'confidential';")
+        match = cur.fetchone()
+        assert match is not None
+        assert match[0] == 1
+        assert match[2] == "contract.pdf"
+        cur.close()
+
+
+def test_schema_migrations_missing_name_retroactively_added(tmp_path: Path) -> None:
+    """Verify that an interim database lacking 'name' column is safely upgraded."""
+    import sqlite3
+
+    db_file = tmp_path / "interim_schema.db"
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE schema_migrations (
+        version INTEGER PRIMARY KEY,
+        applied_at TEXT NOT NULL
+    );
+    """)
+    conn.commit()
+    conn.close()
+
+    db = init_db(db_path=db_file)
+    with db.connection() as verify_conn:
+        cur = verify_conn.cursor()
+        cur.execute("PRAGMA table_info(schema_migrations);")
+        cols = {row[1] for row in cur.fetchall()}
+        assert "name" in cols
+        cur.close()
+
+

@@ -167,10 +167,10 @@ def migration_v2(conn: sqlite3.Connection) -> None:
     cursor.close()
 
 
-# Ordered migration registry: (version, migration_function)
-MIGRATIONS: List[Tuple[int, Callable[[sqlite3.Connection], None]]] = [
-    (1, migration_v1),
-    (2, migration_v2),
+# Ordered migration registry: (version, name, migration_function)
+MIGRATIONS: List[Tuple[int, str, Callable[[sqlite3.Connection], None]]] = [
+    (1, "001_initial_schema", migration_v1),
+    (2, "002_fts5_search", migration_v2),
 ]
 
 
@@ -187,9 +187,16 @@ def apply_migrations(conn: sqlite3.Connection) -> int:
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS schema_migrations (
         version INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
         applied_at TEXT NOT NULL
     );
     """)
+
+    # Ensure schema_migrations table has the 'name' column even if created by an interim schema definition
+    cursor.execute("PRAGMA table_info(schema_migrations);")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+    if "name" not in existing_cols:
+        cursor.execute("ALTER TABLE schema_migrations ADD COLUMN name TEXT NOT NULL DEFAULT '';")
 
     cursor.execute("SELECT version FROM schema_migrations ORDER BY version ASC;")
     applied_versions = {row[0] for row in cursor.fetchall()}
@@ -197,14 +204,14 @@ def apply_migrations(conn: sqlite3.Connection) -> int:
     applied_count = 0
     highest_version = max(applied_versions) if applied_versions else 0
 
-    for version, migration_fn in MIGRATIONS:
+    for version, name, migration_fn in MIGRATIONS:
         if version not in applied_versions:
-            logger.info("Applying database schema migration v%d...", version)
+            logger.info("Applying database schema migration v%d (%s)...", version, name)
             migration_fn(conn)
             now_iso = datetime.now(timezone.utc).isoformat()
             cursor.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?);",
-                (version, now_iso),
+                "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?);",
+                (version, name, now_iso),
             )
             applied_count += 1
             highest_version = version
