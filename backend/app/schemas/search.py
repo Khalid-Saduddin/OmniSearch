@@ -131,3 +131,109 @@ class SemanticSearchResponse(BaseModel):
     offset: int
     execution_time_ms: float
     model_id: str
+
+
+class HybridSearchQuery(BaseModel):
+    """Incoming hybrid search query combining keyword and semantic parameters."""
+
+    query: str = Field(..., min_length=1, description="Raw keyword or natural language query.")
+    filter: Optional[SearchFilter] = Field(default=None, description="Optional search filters.")
+    limit: int = Field(default=20, ge=1, le=100, description="Maximum number of unified results to return.")
+    offset: int = Field(default=0, ge=0, description="Offset for pagination.")
+    rrf_k: int = Field(
+        default=60,
+        ge=1,
+        le=1000,
+        description="Reciprocal Rank Fusion smoothing constant k (default: 60).",
+    )
+    candidate_multiplier: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Candidate pool multiplier per engine before RRF fusion (default: 5).",
+    )
+    min_similarity: float = Field(
+        default=-1.0,
+        ge=-1.0,
+        le=1.0,
+        description="Minimum cosine similarity threshold for semantic candidates.",
+    )
+
+
+class HybridSearchResultItem(BaseModel):
+    """Unified document chunk match fused from lexical and semantic search engines."""
+
+    chunk_id: int
+    file_id: int
+    filename: str
+    file_path: str
+    file_type: str
+    file_status: str
+    is_stale: bool = Field(
+        default=False,
+        description="True if previously indexed content was retained after a subsequent re-indexing error.",
+    )
+    chunk_index: int
+    content: str
+    snippet: str = Field(..., description="Contextual snippet of the chunk.")
+    highlights: List[str] = Field(
+        default_factory=list,
+        description="Extracted matched keywords or phrases.",
+    )
+    page_number: Optional[int] = None
+    slide_number: Optional[int] = None
+    sheet_name: Optional[str] = None
+    row_number: Optional[int] = None
+    start_line: Optional[int] = None
+    end_line: Optional[int] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Custom chunk metadata.")
+
+    # Reciprocal Rank Fusion & Underlying Metrics
+    rrf_score: float = Field(..., description="Combined Reciprocal Rank Fusion score (primary sort).")
+    keyword_rank: Optional[int] = Field(
+        default=None,
+        description="1-based rank within keyword search candidate pool (None if not in keyword pool).",
+    )
+    semantic_rank: Optional[int] = Field(
+        default=None,
+        description="1-based rank within semantic search candidate pool (None if not in semantic pool).",
+    )
+    bm25_score: Optional[float] = Field(
+        default=None,
+        description="Normalized BM25 score from keyword search if available.",
+    )
+    cosine_similarity: Optional[float] = Field(
+        default=None,
+        description="Raw cosine similarity score from vector search if available.",
+    )
+    semantic_score: Optional[float] = Field(
+        default=None,
+        description="Normalized semantic similarity score in [0.0, 1.0] if available.",
+    )
+
+
+class HybridSearchResponse(BaseModel):
+    """Structured hybrid search response returned to clients."""
+
+    query: str
+    total_results: int
+    results: List[HybridSearchResultItem]
+    limit: int
+    offset: int
+    execution_time_ms: float
+    search_mode: str = Field(
+        ...,
+        description="Execution mode: 'hybrid', 'keyword_only', 'semantic_only'.",
+    )
+    keyword_available: bool = Field(
+        ...,
+        description="True if keyword search engine was operational during query execution.",
+    )
+    semantic_available: bool = Field(
+        ...,
+        description="True if semantic search engine was operational during query execution.",
+    )
+    rrf_k: int = Field(
+        default=60,
+        description="RRF smoothing constant k used during ranking fusion.",
+    )

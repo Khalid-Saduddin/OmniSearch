@@ -31,9 +31,8 @@ OmniSearch is a professional, local-first, AI-powered multifile search and perso
 - **Lucide React** — Minimalist UI iconography
 
 ### Architecture Roadmap (Future Phases)
-- **Desktop Shell:** Electron (Phase 8)
-- **Hybrid Search & Fusion:** Reciprocal Rank Fusion (Phase 6)
 - **User Interface Integration:** Unified Search Workspace (Phase 7)
+- **Desktop Shell:** Electron (Phase 8)
 
 ---
 
@@ -49,7 +48,7 @@ OmniSearch/
 │   │   │       ├── endpoints/
 │   │   │       │   ├── __init__.py
 │   │   │       │   ├── health.py          # Health check route handler
-│   │   │       │   └── search.py          # Keyword & Semantic search API endpoints (Phase 4 & 5)
+│   │   │       │   └── search.py          # Keyword, Semantic & Hybrid search API endpoints (Phases 4, 5, 6)
 │   │   │       ├── __init__.py
 │   │   │       └── router.py              # V1 API router aggregator
 │   │   ├── core/
@@ -108,11 +107,13 @@ OmniSearch/
 │   │   │   ├── extraction.py              # ExtractedDocument & ExtractedSegment schemas
 │   │   │   ├── health.py                  # HealthResponse schema
 │   │   │   ├── processing.py              # DocumentChunk & DB entity schemas
-│   │   │   └── search.py                  # Keyword & Semantic search schemas (Phase 4 & 5)
-│   │   ├── search/                        # Search subsystems (Phase 4 & 5)
+│   │   │   └── search.py                  # Keyword, Semantic & Hybrid search schemas (Phases 4, 5, 6)
+│   │   ├── search/                        # Search subsystems (Phases 4, 5, 6)
 │   │   │   ├── __init__.py
+│   │   │   ├── hybrid_search.py           # Unified hybrid search engine (Phase 6)
 │   │   │   ├── keyword_search.py          # SQLite FTS5 + BM25 ranked search engine
 │   │   │   ├── query_parser.py            # Safe query parser & syntax sanitizer
+│   │   │   ├── rrf.py                     # Reciprocal Rank Fusion algorithm & ranking (Phase 6)
 │   │   │   ├── semantic_search.py         # ChromaDB vector similarity search engine (Phase 5)
 │   │   │   └── snippets.py                # HTML snippet formatting & XSS-safe highlighter
 │   │   ├── services/                      # Application business logic
@@ -138,9 +139,11 @@ OmniSearch/
 │   │   ├── test_fts.py                    # SQLite FTS5 triggers & synchronization tests
 │   │   ├── test_hashing.py                # Streaming SHA-256 tests
 │   │   ├── test_health.py                 # Health endpoint automated tests
+│   │   ├── test_hybrid_search.py          # Hybrid search engine & fusion API tests (Phase 6)
 │   │   ├── test_indexer.py                # Persistent indexing service tests
 │   │   ├── test_normalizer.py             # Unicode & formatting normalization tests
 │   │   ├── test_query_parser.py           # Query parsing & escaping tests
+│   │   ├── test_rrf.py                    # Reciprocal Rank Fusion unit tests (Phase 6)
 │   │   ├── test_scanner.py                # Recursive folder scanner tests
 │   │   ├── test_search.py                 # FTS5 keyword search engine & API tests
 │   │   ├── test_semantic_pipeline.py      # Semantic chunk embedding & sync tests (Phase 5)

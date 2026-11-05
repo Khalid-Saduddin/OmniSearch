@@ -54,11 +54,13 @@ def verify_semantic_pipeline(use_real_model: bool = False) -> bool:
             print("\n[1/4] Attempting to load real Google EmbeddingGemma 2 model...")
             try:
                 settings = get_settings()
+                resolved_model = settings.resolved_embedding_model
                 cfg = EmbeddingConfig(
-                    model_id=settings.embedding_model_id,
+                    model_id=resolved_model,
                     dimension=settings.embedding_dimension,
                     device="cpu",
                     precision="float32",
+                    local_files_only=(resolved_model != settings.embedding_model_id),
                 )
                 embedder = EmbeddingGemmaEmbedder(config=cfg)
                 start = time.perf_counter()

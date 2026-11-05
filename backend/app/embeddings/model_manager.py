@@ -66,11 +66,12 @@ class EmbeddingModelManager:
             config.validate_dimension()
 
             logger.info("Loading embedding model %s on %s...", config.model_id, config.device)
+            local_only = getattr(config, "local_files_only", False)
             try:
                 tokenizer = AutoTokenizer.from_pretrained(
                     config.model_id,
                     cache_dir=str(config.cache_dir) if config.cache_dir else None,
-                    local_files_only=config.local_files_only,
+                    local_files_only=local_only,
                 )
             except Exception as e:
                 err_msg = str(e).lower()
@@ -95,7 +96,7 @@ class EmbeddingModelManager:
                     config.model_id,
                     torch_dtype=torch_dtype,
                     cache_dir=str(config.cache_dir) if config.cache_dir else None,
-                    local_files_only=config.local_files_only,
+                    local_files_only=local_only,
                 )
                 device = torch.device(config.device)
                 model.to(device)

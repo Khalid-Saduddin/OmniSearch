@@ -19,6 +19,9 @@ from app.schemas.processing import (
     IndexJobStatus,
 )
 from app.schemas.search import (
+    HybridSearchQuery,
+    HybridSearchResponse,
+    HybridSearchResultItem,
     SearchFilter,
     SearchQuery,
     SearchResultItem,
@@ -50,4 +53,7 @@ __all__ = [
     "SemanticSearchQuery",
     "SemanticSearchResultItem",
     "SemanticSearchResponse",
+    "HybridSearchQuery",
+    "HybridSearchResultItem",
+    "HybridSearchResponse",
 ]

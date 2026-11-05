@@ -160,13 +160,15 @@ def main() -> int:
             from app.vector_store.chroma import ChromaVectorStore
 
             settings = get_settings()
+            resolved_model = settings.resolved_embedding_model
             vstore = ChromaVectorStore(persist_dir=settings.vectors_dir)
             cfg = EmbeddingConfig(
-                model_id=settings.embedding_model_id,
+                model_id=resolved_model,
                 dimension=settings.embedding_dimension,
                 batch_size=settings.embedding_batch_size,
                 device=settings.embedding_device,
                 precision=settings.embedding_precision,
+                local_files_only=(resolved_model != settings.embedding_model_id),
             )
             embedder = EmbeddingGemmaEmbedder(config=cfg)
             semantic_pipeline = SemanticPipeline(db=db_manager, embedder=embedder, vector_store=vstore)

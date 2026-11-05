@@ -74,6 +74,7 @@ Once running, verify backend operation:
 - **Health Check Endpoint:** `http://127.0.0.1:8000/api/v1/health`
 - **Keyword Search Endpoint (POST / GET):** `http://127.0.0.1:8000/api/v1/search`
 - **Semantic Search Endpoint (POST / GET):** `http://127.0.0.1:8000/api/v1/search/semantic`
+- **Hybrid Search Endpoint (POST / GET):** `http://127.0.0.1:8000/api/v1/search/hybrid`
 - **Interactive Swagger Documentation:** `http://127.0.0.1:8000/docs`
 - **Interactive OpenAPI ReDoc:** `http://127.0.0.1:8000/redoc`
 
@@ -116,6 +117,8 @@ This tests:
 - **ChromaDB Storage (Phase 5):** Persistent vector CRUD, cosine distance mapping, metadata filtering ($and, $in), chunk ID tracking.
 - **Semantic Pipeline & Reconciliation (Phase 5):** Batch chunk embedding, idempotency, vector cleanup upon deletion, recovery.
 - **Semantic Search Engine (Phase 5):** Natural language vector retrieval, metadata hydration, duplicate consolidation per file, stale document flags.
+- **Reciprocal Rank Fusion (Phase 6):** RRF formula $1/(k + rank)$ scoring, deterministic 3-tier tie-breaking, candidate pool multiplier.
+- **Hybrid Search Engine (Phase 6):** Concurrent keyword and semantic candidate retrieval, degraded modes (`hybrid`, `keyword_only`, `semantic_only`, `unavailable`), endpoint validation.
 
 ### 4.2 Frontend Checks
 

@@ -112,6 +112,14 @@ class Settings(BaseSettings):
             return self.db_path
         return self.data_dir / "omnisearch.db"
 
+    @property
+    def resolved_embedding_model(self) -> str:
+        """Resolve model identifier to local directory if present, else configured model ID."""
+        local_model_dir = self.models_dir / "embeddinggemma-2"
+        if local_model_dir.exists() and (local_model_dir / "model.safetensors").exists():
+            return str(local_model_dir)
+        return self.embedding_model_id
+
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
         env_file_encoding="utf-8",

@@ -252,7 +252,75 @@ flowchart TD
 
 ---
 
-## 7. Architectural Decisions & Principles
+## 7. Semantic Search Engine (Phase 5 Implemented)
+
+The semantic search subsystem delivers natural-language understanding using local vector embeddings:
+
+1. **`EmbeddingGemma 2` Local Inference (`app/embeddings/`):**
+   - Official task-specific prefixes: `"task: search document | query: "` for documents and `"task: search query | query: "` for queries.
+   - Matryoshka dimension truncation with explicit L2 unit normalization.
+   - Lazy singleton model loading via `EmbeddingModelManager` ensuring fast startup and clean CPU offload.
+2. **`ChromaDB Vector Store` (`app/vector_store/chroma.py`):**
+   - Persistent vector storage with cosine distance metric ($similarity = 1.0 - distance$).
+   - Synchronous metadata filtering supporting `$and` conjunctions and `$in` lists for folder and file type scoping.
+3. **`Semantic Pipeline & Reconciliation` (`app/services/semantic_pipeline.py`):**
+   - Incremental batch chunk embedding with SQLite tracking table (`chunk_embeddings`).
+   - Automated reconciliation cleaning orphaned vectors when documents are modified or removed.
+4. **`SemanticSearchEngine` (`app/search/semantic_search.py`):**
+   - Hydrates vector search candidate hits with canonical SQLite chunk metadata, file statuses, and location coordinates.
+   - Enforces per-file duplicate chunk limits (`max_chunks_per_file`).
+
+---
+
+## 8. Hybrid Search & Ranking Engine (Phase 6 Implemented)
+
+The hybrid search subsystem combines lexical matching and semantic retrieval into a single unified search pipeline:
+
+```mermaid
+flowchart TD
+    UserQuery["HybridSearchQuery (q, filters, limit, offset, rrf_k, candidate_multiplier)"] --> PoolSize["Candidate Pool Calculation\npool_limit = min(max((limit + offset) * candidate_multiplier, 50), 500)"]
+    
+    PoolSize --> Fork{"Concurrent Dispatch (ThreadPoolExecutor)"}
+    
+    Fork --> KWWorker["Thread 1: KeywordSearchEngine\nFTS5 BM25 match & ranking"]
+    Fork --> SemWorker["Thread 2: SemanticSearchEngine\nEmbeddingGemma 2 + ChromaDB retrieval"]
+    
+    KWWorker --> KWList["Lexical Candidates (Ranked 1..N)"]
+    SemWorker --> SemList["Semantic Candidates (Ranked 1..M)"]
+    
+    KWList --> RRF["Reciprocal Rank Fusion (RRF)\nscore(d) = sum(1 / (k + rank_m(d)))"]
+    SemList --> RRF
+    
+    RRF --> TieBreak["Deterministic 3-Tier Tie-Breaking\n1. RRF Score (descending)\n2. Best Available Rank (ascending)\n3. Canonical chunk_id (ascending)"]
+    
+    TieBreak --> ModeAssess{"Degraded Mode Evaluation\n• hybrid: both engines produced hits\n• keyword_only: semantic failed/empty\n• semantic_only: keyword failed/empty\n• unavailable: both engines failed"}
+    
+    ModeAssess --> Hydrate["Metadata Hydration & Snippet Formulation\n• Keyword highlighted marks preferred\n• Location: page, slide, sheet, lines preserved\n• BM25 score & cosine similarity attached"]
+    
+    Hydrate --> Response["HybridSearchResponse"]
+```
+
+### 8.1 Reciprocal Rank Fusion (RRF)
+- **Mathematical Formula:**
+  $$RRF(d) = \sum_{m \in \{\text{keyword}, \text{semantic}\}} \frac{1}{k + \text{rank}_m(d)}$$
+  where $k$ is the smoothing constant (default: 60, configurable $> 0$).
+- **Zero Raw Score Arithmetic:** Lexical BM25 scores and vector cosine similarities live in fundamentally different mathematical distributions; RRF operates purely on discrete ranks, eliminating calibration instability.
+- **Deterministic Tie-Breaking:**
+  1. Primary: RRF score descending.
+  2. Secondary: Minimum individual engine rank ascending ($\min(\text{rank}_{kw}, \text{rank}_{sem})$).
+  3. Tertiary: Canonical integer `chunk_id` ascending.
+- **Candidate Pool Sizing:**
+  $$\text{candidate\_limit} = \min(\max((\text{limit} + \text{offset}) \times \text{candidate\_multiplier}, 50), 500)$$
+  guaranteeing deep candidate pools for fusion while protecting against memory exhaustion.
+- **Degraded Execution Modes:**
+  - `hybrid`: Both engines executed successfully and returned candidate matches.
+  - `keyword_only`: Semantic engine unavailable or threw an exception, or semantic candidates empty.
+  - `semantic_only`: Keyword engine unavailable or threw an exception, or keyword candidates empty.
+  - `unavailable`: Both engines failed or were disabled.
+
+---
+
+## 9. Architectural Decisions & Principles
 
 1. **Local-First & Privacy-Preserving:** All raw document files, indices, and vector embeddings remain on the user's local disk. No external uploads or cloud-dependent APIs are required for keyword and local semantic discovery.
 2. **Decoupled API Architecture:** The FastAPI backend and Next.js frontend are strictly decoupled. This allows independent testing, headless operation, and straightforward embedding into Electron in later phases.

@@ -34,6 +34,10 @@ class EmbeddingConfig(BaseModel):
         default=None,
         description="Local directory for caching downloaded model weights.",
     )
+    local_files_only: bool = Field(
+        default=False,
+        description="Whether to only load from local cache without contacting external repository.",
+    )
     max_sequence_length: int = Field(
         default=512,
         ge=64,
