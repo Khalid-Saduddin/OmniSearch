@@ -1,9 +1,27 @@
 """Centralized application configuration using Pydantic Settings."""
 
+import os
 from functools import lru_cache
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_default_local_appdata() -> Path:
+    """Return platform-standard local application data directory."""
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        return Path(local_app_data) / "OmniSearch"
+    return Path.home() / "AppData" / "Local" / "OmniSearch"
+
+
+def get_default_roaming_appdata() -> Path:
+    """Return platform-standard roaming application data directory."""
+    roaming_data = os.environ.get("APPDATA")
+    if roaming_data:
+        return Path(roaming_data) / "OmniSearch"
+    return Path.home() / "AppData" / "Roaming" / "OmniSearch"
 
 
 class Settings(BaseSettings):
@@ -26,6 +44,81 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = Field(default="INFO", description="Standard logging level")
+
+    # Storage Locations (Phase 3)
+    data_dir: Path = Field(
+        default_factory=lambda: get_default_local_appdata() / "data",
+        description="Directory for local database and persistent indices",
+    )
+    models_dir: Path = Field(
+        default_factory=lambda: get_default_local_appdata() / "models",
+        description="Directory for local AI and embedding model weights",
+    )
+    logs_dir: Path = Field(
+        default_factory=lambda: get_default_local_appdata() / "logs",
+        description="Directory for persistent application log files",
+    )
+    config_dir: Path = Field(
+        default_factory=lambda: get_default_roaming_appdata(),
+        description="Directory for user roaming configuration and settings",
+    )
+
+    # Database Path (defaults to data_dir / omnisearch.db, configurable for tests)
+    db_path: Optional[Path] = Field(
+        default=None,
+        description="Explicit database file path. If None, resolves to data_dir / omnisearch.db",
+    )
+
+    # Chunking Configuration (Phase 3)
+    chunk_target_tokens: int = Field(
+        default=500,
+        description="Target size for document chunks in tokens (recommended: 450-600)",
+    )
+    chunk_overlap_tokens: int = Field(
+        default=80,
+        description="Token overlap between consecutive chunks for semantic context continuity",
+    )
+
+    # Vector Storage and Semantic Embeddings (Phase 5)
+    vectors_dir: Path = Field(
+        default_factory=lambda: get_default_local_appdata() / "vectors",
+        description="Directory for ChromaDB local persistent vector storage",
+    )
+    embedding_model_id: str = Field(
+        default="google/embeddinggemma-2",
+        description="HuggingFace model identifier for Google EmbeddingGemma 2",
+    )
+    embedding_dimension: int = Field(
+        default=768,
+        description="Target vector dimension (EmbeddingGemma 2 default: 768; supports MRL: 512, 256, 128)",
+    )
+    embedding_batch_size: int = Field(
+        default=16,
+        description="Batch size for generating document chunk embeddings on CPU",
+    )
+    embedding_device: str = Field(
+        default="cpu",
+        description="Device for embedding model inference ('cpu' or 'cuda' if supported)",
+    )
+    embedding_precision: str = Field(
+        default="float32",
+        description="Floating-point precision for embedding inference ('float32' or 'bfloat16')",
+    )
+
+    @property
+    def resolved_db_path(self) -> Path:
+        """Resolve database path, ensuring data directory exists."""
+        if self.db_path is not None:
+            return self.db_path
+        return self.data_dir / "omnisearch.db"
+
+    @property
+    def resolved_embedding_model(self) -> str:
+        """Resolve model identifier to local directory if present, else configured model ID."""
+        local_model_dir = self.models_dir / "embeddinggemma-2"
+        if local_model_dir.exists() and (local_model_dir / "model.safetensors").exists():
+            return str(local_model_dir)
+        return self.embedding_model_id
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),

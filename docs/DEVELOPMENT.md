@@ -72,6 +72,9 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 Once running, verify backend operation:
 - **Health Check Endpoint:** `http://127.0.0.1:8000/api/v1/health`
+- **Keyword Search Endpoint (POST / GET):** `http://127.0.0.1:8000/api/v1/search`
+- **Semantic Search Endpoint (POST / GET):** `http://127.0.0.1:8000/api/v1/search/semantic`
+- **Hybrid Search Endpoint (POST / GET):** `http://127.0.0.1:8000/api/v1/search/hybrid`
 - **Interactive Swagger Documentation:** `http://127.0.0.1:8000/docs`
 - **Interactive OpenAPI ReDoc:** `http://127.0.0.1:8000/redoc`
 
@@ -100,9 +103,22 @@ Run pytest using the virtual environment:
 ```
 
 This tests:
-- HTTP 200 response on `GET /api/v1/health`
-- Schema compliance with the Pydantic `HealthResponse` model
-- Response payload property structure and types
+- **Phase 1 Foundations:** HTTP 200 response on `GET /api/v1/health`, schema compliance with `HealthResponse`.
+- **Ingestion Hashing:** Streaming 64 KB chunked SHA-256 computation, empty files, and error handling.
+- **File Type Detector:** Extension validation, signature inspection, disguised executable blocking.
+- **Folder Scanner:** Recursive folder traversal, directory exclusion (`.git`, `node_modules`, `.venv`), missing directory handling.
+- **Multi-Format Extractors:** Genuine document parsing for PDF, DOCX, PPTX, XLSX, TXT, Markdown, Source Code, CSV, and HTML.
+- **Ingestion Coordinator:** Batch processing, fault isolation, and uninterrupted batch execution upon individual file corruption.
+- **Text Normalization:** Unicode NFKC normalization, control character removal, line endings, code indentation preservation.
+- **Intelligent Chunking:** Target size ~500 tokens, ~80 token overlap, sentence and code line boundary preservation, location metadata retention.
+- **Database Architecture:** Table and index creation, foreign key CASCADE deletions, transaction rollback, persistence across re-open, migrations.
+- **FTS5 Keyword Search:** Exact phrases, wildcard prefixes, sanitization, BM25 scoring, HTML-safe snippet formatting.
+- **Embedding Subsystem (Phase 5):** EmbeddingGemma 2 task prompts, Matryoshka dimension validation, lazy loading, deterministic test doubles.
+- **ChromaDB Storage (Phase 5):** Persistent vector CRUD, cosine distance mapping, metadata filtering ($and, $in), chunk ID tracking.
+- **Semantic Pipeline & Reconciliation (Phase 5):** Batch chunk embedding, idempotency, vector cleanup upon deletion, recovery.
+- **Semantic Search Engine (Phase 5):** Natural language vector retrieval, metadata hydration, duplicate consolidation per file, stale document flags.
+- **Reciprocal Rank Fusion (Phase 6):** RRF formula $1/(k + rank)$ scoring, deterministic 3-tier tie-breaking, candidate pool multiplier.
+- **Hybrid Search Engine (Phase 6):** Concurrent keyword and semantic candidate retrieval, degraded modes (`hybrid`, `keyword_only`, `semantic_only`, `unavailable`), endpoint validation.
 
 ### 4.2 Frontend Checks
 

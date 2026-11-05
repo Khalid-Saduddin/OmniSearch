@@ -10,10 +10,19 @@ OmniSearch is a professional, local-first, AI-powered multifile search and perso
 ## 1. Technology Stack
 
 ### Backend
-- **Python 3.11+**
+- **Python 3.11+** (Tested on Python 3.15.1 Windows AMD64)
 - **FastAPI** — High-performance ASGI web framework
 - **Pydantic & Pydantic Settings** — Strongly-typed validation and centralized environment configuration
+- **SQLite (sqlite3)** — Canonical persistent database (WAL mode, foreign key cascades, migrations)
 - **Uvicorn** — Production ASGI server
+- **PyMuPDF (1.28.2)** — High-performance PDF document and page text extraction
+- **python-docx (1.2.0)** — Word (.docx) paragraph and table extraction
+- **python-pptx (1.0.2)** — PowerPoint (.pptx) slide and shape extraction
+- **openpyxl (3.1.5)** — Excel (.xlsx) sheet and row data extraction
+- **BeautifulSoup4 (4.15.0)** — Clean text and semantic element extraction from HTML
+- **charset-normalizer (3.5.2)** — Robust charset detection across text, code, and CSV formats
+- **ChromaDB (1.5.9)** — Persistent local dense vector database for semantic chunk retrieval
+- **PyTorch (2.15.0+cpu) & Transformers (5.22.1)** — Local inference engine for Google EmbeddingGemma 2
 
 ### Frontend
 - **Next.js 15 (App Router)** — Modern React application framework
@@ -22,10 +31,8 @@ OmniSearch is a professional, local-first, AI-powered multifile search and perso
 - **Lucide React** — Minimalist UI iconography
 
 ### Architecture Roadmap (Future Phases)
-- **Desktop Shell:** Electron
-- **Lexical Search & Storage:** SQLite with FTS5 extension (BM25 ranking)
-- **Dense Vector Search:** ChromaDB
-- **Embedding Model:** Google EmbeddingGemma 2
+- **User Interface Integration:** Unified Search Workspace (Phase 7)
+- **Desktop Shell:** Electron (Phase 8)
 
 ---
 
@@ -40,27 +47,114 @@ OmniSearch/
 │   │   │   └── v1/
 │   │   │       ├── endpoints/
 │   │   │       │   ├── __init__.py
-│   │   │       │   └── health.py       # Health check route handler
+│   │   │       │   ├── health.py          # Health check route handler
+│   │   │       │   └── search.py          # Keyword, Semantic & Hybrid search API endpoints (Phases 4, 5, 6)
 │   │   │       ├── __init__.py
-│   │   │       └── router.py           # V1 API router aggregator
+│   │   │       └── router.py              # V1 API router aggregator
 │   │   ├── core/
 │   │   │   ├── __init__.py
-│   │   │   ├── config.py               # Pydantic Settings configuration
-│   │   │   └── logging.py              # Centralized logging setup
-│   │   ├── models/                     # Domain & persistence models
-│   │   ├── schemas/                    # Pydantic API schemas
+│   │   │   ├── config.py                  # Pydantic Settings & storage directory configs
+│   │   │   └── logging.py                 # Centralized logging setup
+│   │   ├── database/                      # Canonical persistence layer (Phase 3 & 4)
+│   │   │   ├── repositories/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── chunks.py              # Chunks repository
+│   │   │   │   ├── embeddings.py          # Chunk embedding tracking repository (Phase 5)
+│   │   │   │   ├── files.py               # Files repository & reconciliation
+│   │   │   │   ├── folders.py             # Folders repository
+│   │   │   │   ├── fts.py                 # FTS5 index maintenance repository (Phase 4)
+│   │   │   │   ├── jobs.py                # Index jobs repository
+│   │   │   │   └── settings.py            # Key-value settings repository
+│   │   │   ├── connection.py              # Connection lifecycle & WAL transactions
+│   │   │   ├── initialization.py          # DB initialization & interrupted job recovery
+│   │   │   ├── migrations.py              # Versioned schema migrations (v1 canonical, v2 FTS5, v3 embeddings)
+│   │   │   └── __init__.py
+│   │   ├── embeddings/                    # Local Embedding Engine (Phase 5)
 │   │   │   ├── __init__.py
-│   │   │   └── health.py               # HealthResponse schema
-│   │   ├── services/                   # Business logic services
-│   │   ├── utils/                      # Reusable utilities
+│   │   │   ├── base.py                    # BaseEmbedder abstract interface
+│   │   │   ├── configuration.py           # EmbeddingConfig & Matryoshka dimension validation
+│   │   │   ├── embedder.py                # EmbeddingGemmaEmbedder (PyTorch + Transformers)
+│   │   │   ├── exceptions.py              # Subsystem exception hierarchy
+│   │   │   ├── model_manager.py           # Lazy model loading & resource lifecycle
+│   │   │   ├── prompts.py                 # Official EmbeddingGemma 2 task prompt formatters
+│   │   │   └── test_embedder.py           # Offline deterministic test double
+│   │   ├── ingestion/                     # Multi-format ingestion engine (Phase 2)
+│   │   │   ├── extractors/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── base.py                # BaseExtractor interface
+│   │   │   │   ├── csv.py                 # CSV/TSV reader extractor
+│   │   │   │   ├── docx.py                # Word document extractor
+│   │   │   │   ├── html.py                # HTML BeautifulSoup extractor
+│   │   │   │   ├── pdf.py                 # PDF PyMuPDF extractor
+│   │   │   │   ├── pptx.py                # PPTX slide extractor
+│   │   │   │   ├── text.py                # TXT, Code & Markdown extractor
+│   │   │   │   └── xlsx.py                # Excel openpyxl extractor
+│   │   │   ├── coordinator.py             # Batch coordinator & fault isolation
+│   │   │   ├── file_detector.py           # Signature validation & executable blocker
+│   │   │   ├── hashing.py                 # Streaming SHA-256 chunked hasher
+│   │   │   ├── registry.py                # Extractor registry
+│   │   │   ├── scanner.py                 # Recursive folder scanner
+│   │   │   └── __init__.py
+│   │   ├── models/                        # Domain models
+│   │   ├── processing/                    # Content processing & chunking (Phase 3)
+│   │   │   ├── chunker.py                 # Intelligent boundary-preserving chunker
+│   │   │   ├── normalizer.py              # Format-aware Unicode & whitespace normalizer
+│   │   │   ├── pipeline.py                # Content transformation pipeline
+│   │   │   ├── token_counter.py           # Replaceable token estimation interface
+│   │   │   └── __init__.py
+│   │   ├── schemas/                       # Pydantic API & domain schemas
+│   │   │   ├── __init__.py
+│   │   │   ├── extraction.py              # ExtractedDocument & ExtractedSegment schemas
+│   │   │   ├── health.py                  # HealthResponse schema
+│   │   │   ├── processing.py              # DocumentChunk & DB entity schemas
+│   │   │   └── search.py                  # Keyword, Semantic & Hybrid search schemas (Phases 4, 5, 6)
+│   │   ├── search/                        # Search subsystems (Phases 4, 5, 6)
+│   │   │   ├── __init__.py
+│   │   │   ├── hybrid_search.py           # Unified hybrid search engine (Phase 6)
+│   │   │   ├── keyword_search.py          # SQLite FTS5 + BM25 ranked search engine
+│   │   │   ├── query_parser.py            # Safe query parser & syntax sanitizer
+│   │   │   ├── rrf.py                     # Reciprocal Rank Fusion algorithm & ranking (Phase 6)
+│   │   │   ├── semantic_search.py         # ChromaDB vector similarity search engine (Phase 5)
+│   │   │   └── snippets.py                # HTML snippet formatting & XSS-safe highlighter
+│   │   ├── services/                      # Application business logic
+│   │   │   ├── __init__.py
+│   │   │   ├── indexer.py                 # Persistent IndexingService
+│   │   │   └── semantic_pipeline.py       # Embedding generation & ChromaDB sync (Phase 5)
+│   │   ├── vector_store/                  # Vector database abstraction (Phase 5)
+│   │   │   ├── __init__.py
+│   │   │   └── chroma.py                  # ChromaDB PersistentClient & cosine metric client
+│   │   ├── utils/                         # Reusable utilities
 │   │   ├── __init__.py
-│   │   └── main.py                     # FastAPI application entry point
+│   │   └── main.py                        # FastAPI application entry point
 │   ├── tests/
 │   │   ├── __init__.py
-│   │   ├── conftest.py                 # Pytest test fixtures
-│   │   └── test_health.py              # Health endpoint automated tests
-│   ├── pyproject.toml                  # Backend project & dependency metadata
-│   └── .env.example                    # Environment variable template
+│   │   ├── conftest.py                    # Pytest test fixtures
+│   │   ├── test_chunker.py                # Chunking & token counting tests
+│   │   ├── test_cli.py                    # Folder indexing CLI automated tests
+│   │   ├── test_coordinator.py            # Coordinator batch & failure tests
+│   │   ├── test_database.py               # SQLite tables, cascades & transactions tests
+│   │   ├── test_embeddings.py             # Embedding config, prompts & embedder tests (Phase 5)
+│   │   ├── test_extractors.py             # Multi-format genuine extraction tests
+│   │   ├── test_file_detector.py          # Security & signature tests
+│   │   ├── test_fts.py                    # SQLite FTS5 triggers & synchronization tests
+│   │   ├── test_hashing.py                # Streaming SHA-256 tests
+│   │   ├── test_health.py                 # Health endpoint automated tests
+│   │   ├── test_hybrid_search.py          # Hybrid search engine & fusion API tests (Phase 6)
+│   │   ├── test_indexer.py                # Persistent indexing service tests
+│   │   ├── test_normalizer.py             # Unicode & formatting normalization tests
+│   │   ├── test_query_parser.py           # Query parsing & escaping tests
+│   │   ├── test_rrf.py                    # Reciprocal Rank Fusion unit tests (Phase 6)
+│   │   ├── test_scanner.py                # Recursive folder scanner tests
+│   │   ├── test_search.py                 # FTS5 keyword search engine & API tests
+│   │   ├── test_semantic_pipeline.py      # Semantic chunk embedding & sync tests (Phase 5)
+│   │   ├── test_semantic_search.py        # ChromaDB semantic search engine & API tests (Phase 5)
+│   │   └── test_vector_store.py           # Chroma persistent storage & query tests (Phase 5)
+│   ├── pyproject.toml                     # Backend project & dependency metadata
+│   └── .env.example                       # Environment variable template
+│
+├── scripts/
+│   ├── index_folder.py                    # Manual folder indexing CLI utility
+│   └── verify_semantic_search.py          # Semantic search pipeline verification test
 │
 ├── frontend/
 │   ├── app/
